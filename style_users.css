@@ -1,68 +1,80 @@
-.dashh {
-    text-align: center;
-    margin-top: 20px;
+/* Table Card Specifics */
+.table-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
 }
 
-a {
-    display: inline-block;
-    padding: 10px 15px;
-    background-color: #007BFF;
-    color: #fff;
-    text-decoration: none;
-    border-radius: 5px;
+.card-header {
+    padding: 20px 25px;
+    background: #fff;
+    border-bottom: 1px solid #edf2f7;
 }
 
-a:hover {
-    background-color: #0056b3;
-}
-body, h1, p {
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    font-family: 'Arial', sans-serif;
-    margin: 20px;
-}
-
-h1 {
-    color: #333;
-}
-
-table {
+/* Modern Table Design */
+.modern-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
 }
 
-th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
+.modern-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 15px 25px;
     text-align: left;
 }
 
-th {
-    background-color: #f2f2f2;
+.modern-table td {
+    padding: 18px 25px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
 }
 
-form {
-    display: inline-block;
+.modern-table tr:hover {
+    background-color: #fbfcfe;
 }
 
-button {
-    background-color: #dc3545;
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
+/* Role Badges */
+.role-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: capitalize;
+}
+
+.role-badge.admin { background: #fee2e2; color: #b91c1c; }
+.role-badge.teacher { background: #fef3c7; color: #92400e; }
+.role-badge.student { background: #dcfce7; color: #15803d; }
+
+/* Delete Button */
+.btn-delete-user {
+    background: transparent;
+    color: #ef4444;
+    border: 1px solid #fee2e2;
+    padding: 8px 15px;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background-color 0.3s;
+    font-size: 0.85rem;
+    transition: all 0.2s;
 }
 
-button:hover {
-    background-color: #c82333;
+.btn-delete-user:hover {
+    background: #ef4444;
+    color: white;
 }
 
-p {
-    color: #333;
-    margin-top: 20px;
+.btn-back {
+    text-decoration: none;
+    color: #64748b;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
+
+.btn-back:hover { color: #334155; }
