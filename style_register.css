@@ -1,0 +1,87 @@
+/* Registration Page Layout */
+.register-wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+.info-side {
+    flex: 1;
+    background: linear-gradient(rgba(78, 115, 223, 0.9), rgba(46, 89, 217, 0.9)), 
+                url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80');
+    background-size: cover;
+    background-position: center;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+}
+
+.info-content { max-width: 400px; }
+.main-icon { font-size: 4rem; margin-bottom: 20px; color: rgba(255,255,255,0.8); }
+.info-content h2 { font-size: 2.5rem; margin-bottom: 20px; }
+.benefit-list { list-style: none; margin-top: 30px; }
+.benefit-list li { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+
+.form-side {
+    flex: 1.2;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.form-container { width: 100%; max-width: 480px; }
+.form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+.back-link { text-decoration: none; color: #858796; font-size: 0.9rem; }
+
+/* Role Cards Design */
+.role-selector {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.role-selector input { display: none; }
+
+.role-card {
+    flex: 1;
+    border: 2px solid #eaecf4;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.role-card i { font-size: 1.5rem; display: block; margin-bottom: 8px; color: #b7b9cc; }
+.role-card span { font-weight: 600; color: #5a5c69; }
+
+.role-selector input:checked + .role-card {
+    border-color: #4e73df;
+    background: #f8f9fc;
+}
+
+.role-selector input:checked + .role-card i, 
+.role-selector input:checked + .role-card span { color: #4e73df; }
+
+/* Input Styling */
+.input-group label, .input-field label { font-weight: 700; color: #4e73df; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 8px; display: block; }
+.register-btn {
+    width: 100%;
+    padding: 15px;
+    background: #4e73df;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 20px;
+    box-shadow: 0 5px 15px rgba(78, 115, 223, 0.3);
+}
+
+@media (max-width: 992px) {
+    .info-side { display: none; }
+}
