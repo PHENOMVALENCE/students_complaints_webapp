@@ -162,7 +162,9 @@ td {
 }
 
 .badge.pending { background: #fffaf0; color: #9c4221; border: 1px solid #feebc8; }
+.badge.in-progress { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
 .badge.resolved { background: #f0fff4; color: #22543d; border: 1px solid #c6f6d5; }
+.badge.denied { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
 .btn-delete {
     color: var(--danger);

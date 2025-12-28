@@ -28,6 +28,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 case 'admin':
                     header("Location: admin_dashboard.php");
                     break;
+                case 'department_officer':
+                    header("Location: department_officer_dashboard.php");
+                    break;
                 default:
                     header("Location: default_dashboard.php");
                     break;
