@@ -3,7 +3,7 @@ session_start();
 
 
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
-    header("Location: login.html");
+    header("Location: index.php");
     exit;
 }
 
@@ -26,24 +26,67 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
         <html lang="en">
         <head>
             <meta charset="UTF-8">
-            <title>Respond to Complaint</title>
-            <link rel="stylesheet" href="style_cmp.css">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Respond to Complaint #<?php echo $complaint['complaint_id']; ?> - Admin</title>
+            <link rel="stylesheet" href="theme.css">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
         </head>
         <body>
-            <h2>Respond to Complaint</h2>
-            <form action="process_response.php" method="post">
-                <input type="hidden" name="complaint_id" value="<?php echo $complaint['complaint_id']; ?>">
-                <label for="student_username">Student Username:</label>
-                <input type="text" id="student_username" name="student_username" value="<?php echo $complaint['student_username']; ?>" readonly><br>
+        <div class="dashboard-container">
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-shield-alt"></i> Admin Panel</h3>
+                </div>
+                <nav class="sidebar-nav">
+                    <a href="admin_dashboard.php"><i class="fas fa-chart-line"></i> Overview</a>
+                    <a href="students_complaints.php"><i class="fas fa-exclamation-circle"></i> Student Complaints</a>
+                    <div class="nav-divider"></div>
+                    <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </nav>
+            </aside>
+            <main class="main-content">
+                <header class="top-bar">
+                    <h1><i class="fas fa-reply"></i> Respond to Complaint</h1>
+                    <div class="admin-profile">
+                        <i class="fas fa-user-shield"></i>
+                        <span><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+                    </div>
+                </header>
+                <section class="content-wrapper">
+                    <div class="card" style="max-width: 800px; margin: 0 auto;">
+                        <h3><i class="fas fa-file-invoice"></i> Complaint #<?php echo $complaint['complaint_id']; ?></h3>
+                        <form action="process_response.php" method="post">
+                            <input type="hidden" name="complaint_id" value="<?php echo $complaint['complaint_id']; ?>">
+                            
+                            <div class="form-group">
+                                <label for="student_username"><i class="fas fa-user"></i> Student Username</label>
+                                <input type="text" id="student_username" name="student_username" value="<?php echo htmlspecialchars($complaint['student_username']); ?>" readonly>
+                            </div>
 
-                <label for="complaint">Complaint:</label>
-                <textarea id="complaint" name="complaint" readonly><?php echo $complaint['complaint']; ?></textarea><br>
+                            <div class="form-group">
+                                <label for="complaint"><i class="fas fa-comment-alt"></i> Original Complaint</label>
+                                <textarea id="complaint" name="complaint" readonly rows="6"><?php echo htmlspecialchars($complaint['complaint']); ?></textarea>
+                            </div>
 
-                <label for="response">Response:</label>
-                <textarea id="response" name="response" required></textarea><br>
+                            <div class="form-group">
+                                <label for="response"><i class="fas fa-reply"></i> Your Response <span class="required">*</span></label>
+                                <textarea id="response" name="response" required rows="8" placeholder="Enter your response or resolution details here..."></textarea>
+                                <small class="form-hint">Provide a clear and helpful response to the student's complaint.</small>
+                            </div>
 
-                <input type="submit" value="Submit Response">
-            </form>
+                            <div style="display: flex; gap: var(--spacing-md);">
+                                <button type="submit" class="btn-submit">
+                                    <i class="fas fa-paper-plane"></i> Submit Response
+                                </button>
+                                <a href="students_complaints.php" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center;">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            </main>
+        </div>
         </body>
         </html>
         <?php
@@ -52,8 +95,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
         exit;
     }
 } else {
-    
-    header("Location: error.php");
+    header("Location: students_complaints.php");
     exit;
 }
 ?>

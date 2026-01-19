@@ -19,7 +19,9 @@ $user_data = $user_result->fetch_assoc();
 $user_stmt->close();
 
 if (!$user_data || !$user_data['department_id']) {
-    die("Error: Department not assigned. Please contact administrator.");
+    $_SESSION['message'] = "error|Department not assigned. Please contact administrator.";
+    header("Location: index.php");
+    exit;
 }
 
 $department_id = $user_data['department_id'];
@@ -32,7 +34,7 @@ $dept_result = $dept_stmt->get_result();
 $dept_data = $dept_result->fetch_assoc();
 $dept_stmt->close();
 
-$department_name = $dept_data['department_name'];
+$department_name = $dept_data['department_name'] ?? 'Unknown Department';
 
 // Get message from session
 $message = isset($_SESSION['message']) ? $_SESSION['message'] : "";
@@ -46,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
     $new_status = '';
     
     // Validate that complaint belongs to this department
-    $check_stmt = $conn->prepare("SELECT department_id FROM complaints WHERE complaint_id = ?");
+    $check_stmt = $conn->prepare("SELECT status, department_id FROM complaints WHERE complaint_id = ?");
     $check_stmt->bind_param("i", $complaint_id);
     $check_stmt->execute();
     $check_result = $check_stmt->get_result();
@@ -58,6 +60,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
         header("Location: department_officer_dashboard.php");
         exit;
     } else {
+        $old_status = $check_data['status'] ?? 'pending';
+        
         switch ($action) {
             case 'in_progress':
                 $new_status = 'in_progress';
@@ -78,24 +82,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
         }
         
         if ($new_status) {
-            // Get old status for history
-            $old_status_stmt = $conn->prepare("SELECT status FROM complaints WHERE complaint_id = ?");
-            $old_status_stmt->bind_param("i", $complaint_id);
-            $old_status_stmt->execute();
-            $old_status_result = $old_status_stmt->get_result();
-            $old_status_data = $old_status_result->fetch_assoc();
-            $old_status = $old_status_data['status'];
-            $old_status_stmt->close();
-            
             // Update complaint
             $update_stmt = $conn->prepare("UPDATE complaints SET status = ?, response = ?, updated_at = NOW() WHERE complaint_id = ?");
             $update_stmt->bind_param("ssi", $new_status, $response, $complaint_id);
             
             if ($update_stmt->execute()) {
                 // Log in history
-                $history_notes = $action === 'resolve' ? "Complaint resolved by department officer" : "Status changed to in progress";
+                $history_notes = $action === 'resolve' ? "Complaint resolved by department officer" : "Status changed to in progress by department officer";
                 $history_stmt = $conn->prepare("INSERT INTO complaint_history (complaint_id, action, performed_by, old_status, new_status, notes) VALUES (?, ?, ?, ?, ?, ?)");
-                $history_stmt->bind_param("issss", $complaint_id, $action, $username, $old_status, $new_status, $history_notes);
+                $history_stmt->bind_param("isssss", $complaint_id, $action, $username, $old_status, $new_status, $history_notes);
                 $history_stmt->execute();
                 $history_stmt->close();
                 
@@ -103,7 +98,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
                 header("Location: department_officer_dashboard.php");
                 exit;
             } else {
-                $message = "error|Update failed: " . $conn->error;
+                $_SESSION['message'] = "error|Update failed: " . $conn->error;
+                header("Location: department_officer_dashboard.php");
+                exit;
             }
             $update_stmt->close();
         }
@@ -143,88 +140,46 @@ $stats_stmt->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Department Officer Dashboard</title>
-    <link rel="stylesheet" href="style_dassh.css">
+    <title>Department Officer Dashboard - CMS</title>
+    <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .dept-banner {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-xl);
+            box-shadow: var(--shadow-lg);
         }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .stat-card h4 {
-            margin: 0 0 0.5rem 0;
-            color: #666;
-            font-size: 0.9rem;
-        }
-        .stat-card .number {
+        
+        .dept-banner h2 {
+            color: white;
+            margin-bottom: var(--spacing-sm);
             font-size: 2rem;
-            font-weight: bold;
-            color: #333;
         }
-        .dept-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-bottom: 2rem;
-        }
-        .dept-header h2 {
+        
+        .dept-banner p {
+            color: rgba(255, 255, 255, 0.9);
             margin: 0;
+            font-size: 1.1rem;
         }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-        .form-group textarea {
+        
+        .response-textarea {
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: var(--spacing-md);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
             font-family: inherit;
+            resize: vertical;
+            margin-bottom: var(--spacing-sm);
+            transition: var(--transition);
         }
-        .btn-group {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-        .required {
-            color: red;
+        
+        .response-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
     </style>
 </head>
@@ -233,18 +188,21 @@ $stats_stmt->close();
 <div class="dashboard-container">
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h3>CMS Pro</h3>
+            <h3><i class="fas fa-building"></i> Department Portal</h3>
         </div>
         <nav class="sidebar-nav">
-            <a href="#" class="active"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="department_officer_dashboard.php" class="active"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="department_officer_dashboard.php#complaints"><i class="fas fa-list-alt"></i> My Complaints</a>
+            <div class="nav-divider"></div>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>
 
     <main class="main-content">
         <header class="top-bar">
-            <h1>Department Officer Portal</h1>
+            <h1><i class="fas fa-tachometer-alt"></i> Department Officer Dashboard</h1>
             <div class="user-info">
+                <i class="fas fa-user-circle"></i>
                 <span>Welcome, <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></span>
             </div>
         </header>
@@ -252,7 +210,7 @@ $stats_stmt->close();
         <section class="content-wrapper">
             <?php if ($message): 
                 list($type, $text) = explode('|', $message); ?>
-                <div class="alert alert-<?php echo $type; ?>" id="alertMessage" style="padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; font-weight: 500; display: flex; align-items: center; justify-content: space-between; animation: slideDown 0.3s ease-out; box-shadow: 0 2px 4px rgba(0,0,0,0.1); <?php echo $type === 'success' ? 'background: #d1fae5; color: #065f46; border-left: 4px solid #10b981;' : 'background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444;'; ?>">
+                <div class="alert alert-<?php echo $type; ?>" id="alertMessage">
                     <span style="display: flex; align-items: center; gap: 0.5rem;">
                         <i class="fas <?php echo $type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'; ?>"></i>
                         <?php echo htmlspecialchars($text); ?>
@@ -273,32 +231,47 @@ $stats_stmt->close();
                 </script>
             <?php endif; ?>
 
-            <div class="dept-header">
+            <div class="dept-banner">
                 <h2><i class="fas fa-building"></i> <?php echo htmlspecialchars($department_name); ?></h2>
                 <p>Manage complaints routed to your department</p>
             </div>
 
             <div class="stats-grid">
                 <div class="stat-card">
-                    <h4>Total Complaints</h4>
-                    <div class="number"><?php echo $stats['total']; ?></div>
+                    <div class="stat-icon total"><i class="fas fa-file-invoice"></i></div>
+                    <div class="stat-info">
+                        <span class="label">Total Complaints</span>
+                        <h3><?php echo $stats['total']; ?></h3>
+                    </div>
                 </div>
+
                 <div class="stat-card">
-                    <h4>Pending</h4>
-                    <div class="number" style="color: #f59e0b;"><?php echo $stats['pending']; ?></div>
+                    <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
+                    <div class="stat-info">
+                        <span class="label">Pending</span>
+                        <h3><?php echo $stats['pending']; ?></h3>
+                    </div>
                 </div>
+
                 <div class="stat-card">
-                    <h4>In Progress</h4>
-                    <div class="number" style="color: #3b82f6;"><?php echo $stats['in_progress']; ?></div>
+                    <div class="stat-icon in-progress"><i class="fas fa-spinner"></i></div>
+                    <div class="stat-info">
+                        <span class="label">In Progress</span>
+                        <h3><?php echo $stats['in_progress']; ?></h3>
+                    </div>
                 </div>
+
                 <div class="stat-card">
-                    <h4>Resolved</h4>
-                    <div class="number" style="color: #10b981;"><?php echo $stats['resolved']; ?></div>
+                    <div class="stat-icon resolved"><i class="fas fa-check-circle"></i></div>
+                    <div class="stat-info">
+                        <span class="label">Resolved</span>
+                        <h3><?php echo $stats['resolved']; ?></h3>
+                    </div>
                 </div>
             </div>
 
-            <div class="card table-card">
-                <h3><i class="fas fa-list"></i> Department Complaints</h3>
+            <div class="card" id="complaints">
+                <h3><i class="fas fa-list-alt"></i> Department Complaints</h3>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -324,23 +297,31 @@ $stats_stmt->close();
                                 <td><?php echo htmlspecialchars($row['category_name'] ?? 'Uncategorized'); ?></td>
                                 <td>
                                     <span class="badge <?php echo strtolower(str_replace('_', '-', $row['status'])); ?>">
+                                        <i class="fas <?php 
+                                            if ($row['status'] === 'pending') echo 'fa-clock';
+                                            elseif ($row['status'] === 'in_progress') echo 'fa-spinner';
+                                            elseif ($row['status'] === 'resolved') echo 'fa-check-circle';
+                                            else echo 'fa-times-circle';
+                                        ?>"></i>
                                         <?php echo ucfirst(str_replace('_', ' ', $row['status'])); ?>
                                     </span>
                                 </td>
                                 <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                                 <td>
-                                    <a href="view_complaint_detail.php?id=<?php echo $row['complaint_id']; ?>&role=officer" class="btn-view" title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <?php if ($row['status'] === 'pending' || $row['status'] === 'in_progress'): ?>
-                                        <button onclick="showActionForm(<?php echo $row['complaint_id']; ?>, '<?php echo $row['status']; ?>')" class="btn-view" title="Update Status">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    <?php endif; ?>
+                                    <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+                                        <a href="view_complaint_detail.php?id=<?php echo $row['complaint_id']; ?>" class="btn-view" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <?php if ($row['status'] === 'pending' || $row['status'] === 'in_progress'): ?>
+                                            <button onclick="showActionForm(<?php echo $row['complaint_id']; ?>, '<?php echo $row['status']; ?>')" class="btn-view" title="Update Status" style="background: none; border: none; cursor: pointer;">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; else: ?>
-                                <tr><td colspan="7" class="empty">No complaints assigned to your department.</td></tr>
+                                <tr><td colspan="7" class="empty">No complaints assigned to your department yet.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -351,29 +332,38 @@ $stats_stmt->close();
 </div>
 
 <!-- Action Modal -->
-<div id="actionModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-    <div style="background:white; padding:2rem; border-radius:8px; max-width:500px; width:90%;">
-        <h3>Update Complaint Status</h3>
+<div id="actionModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3 style="margin-top: 0;"><i class="fas fa-edit"></i> Update Complaint Status</h3>
         <form method="post" id="actionForm">
             <input type="hidden" name="complaint_id" id="modal_complaint_id">
             <input type="hidden" name="action" id="modal_action">
             
-            <div class="form-group">
-                <label>New Status</label>
-                <div class="btn-group">
-                    <button type="button" onclick="setAction('in_progress')" class="btn btn-primary">Mark In Progress</button>
-                    <button type="button" onclick="setAction('resolve')" class="btn btn-success">Resolve</button>
+            <div style="margin-bottom: var(--spacing-lg);">
+                <label style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600;">New Status</label>
+                <div class="action-buttons" style="display: flex; gap: var(--spacing-sm); flex-wrap: wrap;">
+                    <button type="button" onclick="setAction('in_progress')" class="btn-action btn-in-progress">
+                        <i class="fas fa-spinner"></i> Mark In Progress
+                    </button>
+                    <button type="button" onclick="setAction('resolve')" class="btn-action btn-resolve">
+                        <i class="fas fa-check"></i> Resolve
+                    </button>
                 </div>
             </div>
             
-            <div class="form-group" id="responseGroup" style="display:none;">
-                <label for="response">Response/Resolution Details <span class="required">*</span></label>
-                <textarea id="response" name="response" rows="4" placeholder="Provide details about the resolution..."></textarea>
+            <div id="responseGroup" style="display:none; margin-bottom: var(--spacing-lg);">
+                <label for="response" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600;">Response/Resolution Details <span class="required">*</span></label>
+                <textarea id="response" name="response" class="response-textarea" rows="6" placeholder="Provide details about the resolution..."></textarea>
+                <small class="form-hint">This response will be visible to the student when the complaint is resolved.</small>
             </div>
             
-            <div class="btn-group">
-                <button type="submit" class="btn btn-primary">Update</button>
-                <button type="button" onclick="closeModal()" class="btn" style="background:#ccc;">Cancel</button>
+            <div style="display: flex; gap: var(--spacing-md);">
+                <button type="submit" class="btn-submit" style="flex: 1;">
+                    <i class="fas fa-save"></i> Update Status
+                </button>
+                <button type="button" onclick="closeModal()" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: var(--spacing-sm);">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
             </div>
         </form>
     </div>
@@ -382,22 +372,26 @@ $stats_stmt->close();
 <script>
 function showActionForm(complaintId, currentStatus) {
     document.getElementById('modal_complaint_id').value = complaintId;
-    document.getElementById('actionModal').style.display = 'flex';
+    document.getElementById('actionModal').classList.add('active');
 }
 
 function setAction(action) {
     document.getElementById('modal_action').value = action;
+    var responseGroup = document.getElementById('responseGroup');
+    var responseField = document.getElementById('response');
+    
     if (action === 'resolve') {
-        document.getElementById('responseGroup').style.display = 'block';
-        document.getElementById('response').required = true;
+        responseGroup.style.display = 'block';
+        responseField.required = true;
+        responseField.placeholder = 'Provide details about the resolution...';
     } else {
-        document.getElementById('responseGroup').style.display = 'none';
-        document.getElementById('response').required = false;
+        responseGroup.style.display = 'none';
+        responseField.required = false;
     }
 }
 
 function closeModal() {
-    document.getElementById('actionModal').style.display = 'none';
+    document.getElementById('actionModal').classList.remove('active');
     document.getElementById('actionForm').reset();
     document.getElementById('responseGroup').style.display = 'none';
 }
@@ -405,4 +399,3 @@ function closeModal() {
 
 </body>
 </html>
-

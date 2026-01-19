@@ -68,99 +68,120 @@ $history_stmt->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complaint Details #<?php echo $complaint_id; ?></title>
-    <link rel="stylesheet" href="style_dassh.css">
+    <title>Complaint Details #<?php echo $complaint_id; ?> - CMS</title>
+    <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .detail-container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
         .detail-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 1.5rem;
+            background: var(--bg-white);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            margin-bottom: var(--spacing-lg);
         }
         .detail-header {
-            border-bottom: 2px solid #eee;
-            padding-bottom: 1rem;
-            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .detail-header h2 {
+            margin: 0;
         }
         .detail-row {
             display: grid;
-            grid-template-columns: 150px 1fr;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid #f0f0f0;
+            grid-template-columns: 180px 1fr;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-md) 0;
+            border-bottom: 1px solid var(--border);
         }
         .detail-label {
             font-weight: 600;
-            color: #666;
+            color: var(--text-secondary);
         }
         .detail-value {
-            color: #333;
+            color: var(--text-primary);
         }
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .status-badge.pending { background: #fef3c7; color: #92400e; }
-        .status-badge.in-progress { background: #dbeafe; color: #1e40af; }
-        .status-badge.resolved { background: #d1fae5; color: #065f46; }
         .history-item {
-            padding: 1rem;
-            border-left: 3px solid #667eea;
-            margin-bottom: 1rem;
-            background: #f9fafb;
+            padding: var(--spacing-md);
+            border-left: 4px solid var(--primary);
+            margin-bottom: var(--spacing-md);
+            background: var(--bg-light);
+            border-radius: var(--radius);
         }
         .history-item .history-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 0.5rem;
+            margin-bottom: var(--spacing-sm);
         }
         .history-item .history-action {
             font-weight: 600;
-            color: #667eea;
+            color: var(--primary);
         }
         .history-item .history-date {
-            color: #666;
-            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
         }
         .back-btn {
-            display: inline-block;
-            margin-bottom: 1.5rem;
-            padding: 0.5rem 1rem;
-            background: #667eea;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--primary);
             color: white;
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: var(--radius);
+            transition: var(--transition);
+        }
+        .back-btn:hover {
+            background: var(--primary-dark);
+            transform: translateX(-4px);
         }
     </style>
 </head>
 <body>
 
 <div class="dashboard-container">
-    <main class="main-content" style="margin-left: 0;">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-file-alt"></i> Complaint Details</h3>
+        </div>
+        <nav class="sidebar-nav">
+            <?php if ($role === 'student'): ?>
+                <a href="student_dashboard.php"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <?php elseif ($role === 'teacher'): ?>
+                <a href="teacher_dashboard.php"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <?php elseif ($role === 'admin'): ?>
+                <a href="students_complaints.php"><i class="fas fa-arrow-left"></i> Back to Complaints</a>
+            <?php else: ?>
+                <a href="index.php"><i class="fas fa-home"></i> Home</a>
+            <?php endif; ?>
+            <div class="nav-divider"></div>
+            <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </nav>
+    </aside>
+    <main class="main-content">
         <section class="content-wrapper">
             <div class="detail-container">
-                <a href="<?php 
-                    if ($role === 'student') echo 'student_dashboard.php';
-                    elseif ($role === 'department_officer') echo 'department_officer_dashboard.php';
-                    else echo 'students_complaints.php';
-                ?>" class="back-btn">
-                    <i class="fas fa-arrow-left"></i> Back
-                </a>
 
                 <div class="detail-card">
                     <div class="detail-header">
-                        <h2>Complaint #<?php echo $complaint['complaint_id']; ?></h2>
+                        <h2><i class="fas fa-file-invoice"></i> Complaint #<?php echo $complaint['complaint_id']; ?></h2>
                         <span class="status-badge <?php echo strtolower(str_replace('_', '-', $complaint['status'])); ?>">
+                            <i class="fas <?php 
+                                if ($complaint['status'] === 'pending') echo 'fa-clock';
+                                elseif ($complaint['status'] === 'in_progress') echo 'fa-spinner';
+                                elseif ($complaint['status'] === 'resolved') echo 'fa-check-circle';
+                                else echo 'fa-times-circle';
+                            ?>"></i>
                             <?php echo ucfirst(str_replace('_', ' ', $complaint['status'])); ?>
                         </span>
                     </div>
@@ -214,8 +235,8 @@ $history_stmt->close();
                     <?php if ($complaint['response']): ?>
                     <div class="detail-row" style="grid-template-columns: 1fr;">
                         <div>
-                            <div class="detail-label">Response/Resolution:</div>
-                            <div class="detail-value" style="margin-top: 0.5rem; white-space: pre-wrap; background: #f0f9ff; padding: 1rem; border-radius: 4px;"><?php echo htmlspecialchars($complaint['response']); ?></div>
+                            <div class="detail-label"><i class="fas fa-reply"></i> Response/Resolution:</div>
+                            <div class="detail-value" style="margin-top: var(--spacing-sm); white-space: pre-wrap; background: var(--info-light); padding: var(--spacing-md); border-radius: var(--radius); border-left: 4px solid var(--info);"><?php echo htmlspecialchars($complaint['response']); ?></div>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -223,7 +244,7 @@ $history_stmt->close();
 
                 <?php if ($history): ?>
                 <div class="detail-card">
-                    <h3><i class="fas fa-history"></i> Complaint History</h3>
+                    <h3><i class="fas fa-history"></i> Complaint Timeline</h3>
                     <?php foreach ($history as $item): ?>
                     <div class="history-item">
                         <div class="history-header">

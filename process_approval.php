@@ -20,9 +20,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['user_id'])) {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $user_id);
         
-        if (!$stmt->execute()) {
-            // Optional: Log error to a file instead of echoing to keep the UI clean
-            error_log("Error approving teacher ID $user_id: " . $stmt->error);
+        if ($stmt->execute()) {
+            $_SESSION['message'] = "success|Teacher approved successfully!";
+        } else {
+            $_SESSION['message'] = "error|Failed to approve teacher: " . $stmt->error;
         }
         $stmt->close();
 
@@ -33,15 +34,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['user_id'])) {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("i", $user_id);
         
-        if (!$stmt->execute()) {
-            error_log("Error rejecting teacher ID $user_id: " . $stmt->error);
+        if ($stmt->execute()) {
+            $_SESSION['message'] = "success|Teacher request rejected and removed.";
+        } else {
+            $_SESSION['message'] = "error|Failed to reject teacher: " . $stmt->error;
         }
         $stmt->close();
     }
 
     // Redirect back to the approval list page
-    // Note: Ensure this matches the filename of your approval page (e.g., teacher_approval.php)
-    header("Location: teacher_approval.php?status=updated");
+    header("Location: teacher_approval.php");
     exit;
 } else {
     // If someone tries to access this file directly without POST data

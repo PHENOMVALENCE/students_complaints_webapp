@@ -36,51 +36,67 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $approved
     $action = $_POST['action'];
     $response = trim($_POST['response'] ?? '');
     
-    // Get old status
-    $old_status_stmt = $conn->prepare("SELECT status FROM complaints WHERE complaint_id = ?");
-    $old_status_stmt->bind_param("i", $complaint_id);
-    $old_status_stmt->execute();
-    $old_status_result = $old_status_stmt->get_result();
-    $old_status_data = $old_status_result->fetch_assoc();
-    $old_status = $old_status_data['status'];
-    $old_status_stmt->close();
+    // Check if complaint exists
+    $check_stmt = $conn->prepare("SELECT status FROM complaints WHERE complaint_id = ?");
+    $check_stmt->bind_param("i", $complaint_id);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
     
-    $new_status = '';
-    switch ($action) {
-        case 'in_progress':
-            $new_status = 'in_progress';
-            break;
-        case 'resolve':
-            if (empty($response)) {
-                $message = "error|Please provide a response when resolving.";
-            } else {
-                $new_status = 'resolved';
-            }
-            break;
-        case 'deny':
-            $new_status = 'denied';
-            break;
-    }
-    
-    if ($new_status && empty($message)) {
-        $update_stmt = $conn->prepare("UPDATE complaints SET status = ?, response = ?, updated_at = NOW() WHERE complaint_id = ?");
-        $update_stmt->bind_param("ssi", $new_status, $response, $complaint_id);
+    if ($check_result->num_rows === 0) {
+        $check_stmt->close();
+        $message = "error|Complaint not found.";
+    } else {
+        $old_status_data = $check_result->fetch_assoc();
+        $old_status = $old_status_data['status'] ?? 'pending';
+        $check_stmt->close();
         
-        if ($update_stmt->execute()) {
-            // Log in history
-            $history_notes = "Status updated by teacher";
-            $history_stmt = $conn->prepare("INSERT INTO complaint_history (complaint_id, action, performed_by, old_status, new_status, notes) VALUES (?, ?, ?, ?, ?, ?)");
-            $history_stmt->bind_param("issss", $complaint_id, $action, $_SESSION['username'], $old_status, $new_status, $history_notes);
-            $history_stmt->execute();
-            $history_stmt->close();
-            
-            $_SESSION['message'] = "success|Complaint status updated successfully!";
-            header("Location: teacher_dashboard.php");
-            exit;
-        } else {
-            $message = "error|Update failed: " . $conn->error;
+        $new_status = '';
+        switch ($action) {
+            case 'in_progress':
+                $new_status = 'in_progress';
+                break;
+            case 'resolve':
+                if (empty($response)) {
+                    $message = "error|Please provide a response when resolving.";
+                } else {
+                    $new_status = 'resolved';
+                }
+                break;
+            case 'deny':
+                $new_status = 'denied';
+                // For deny, response is optional but recommended
+                if (empty($response)) {
+                    $response = 'Complaint denied by teacher.';
+                }
+                break;
         }
-        $update_stmt->close();
+        
+        if ($new_status && empty($message)) {
+            $update_stmt = $conn->prepare("UPDATE complaints SET status = ?, response = ?, updated_at = NOW() WHERE complaint_id = ?");
+            $update_stmt->bind_param("ssi", $new_status, $response, $complaint_id);
+            
+            if ($update_stmt->execute()) {
+                // Log in history
+                $history_notes = "Status updated by teacher";
+                if ($new_status === 'resolved') {
+                    $history_notes = "Complaint resolved by teacher";
+                } elseif ($new_status === 'denied') {
+                    $history_notes = "Complaint denied by teacher";
+                }
+                
+                $history_stmt = $conn->prepare("INSERT INTO complaint_history (complaint_id, action, performed_by, old_status, new_status, notes) VALUES (?, ?, ?, ?, ?, ?)");
+                $history_stmt->bind_param("isssss", $complaint_id, $action, $_SESSION['username'], $old_status, $new_status, $history_notes);
+                $history_stmt->execute();
+                $history_stmt->close();
+                
+                $_SESSION['message'] = "success|Complaint status updated successfully!";
+                header("Location: teacher_dashboard.php");
+                exit;
+            } else {
+                $message = "error|Update failed: " . $conn->error;
+            }
+            $update_stmt->close();
+        }
     }
 }
 
@@ -113,133 +129,41 @@ $stats = $conn->query("SELECT
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard</title>
-    <link rel="stylesheet" href="style_dassh.css">
+    <title>Teacher Dashboard - Complaint Management System</title>
+    <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-        }
-        .stat-icon.pending { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-        .stat-icon.in-progress { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
-        .stat-icon.resolved { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        .stat-icon.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .stat-info h3 {
-            margin: 0;
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1a202c;
-        }
-        .stat-info .label {
-            color: #718096;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        .btn-action {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .btn-action:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        .btn-in-progress {
-            background: #3b82f6;
-            color: white;
-        }
-        .btn-resolve {
-            background: #10b981;
-            color: white;
-        }
-        .btn-deny {
-            background: #ef4444;
-            color: white;
-        }
-        .response-textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 6px;
-            font-family: inherit;
-            resize: vertical;
-            margin-bottom: 0.5rem;
-            transition: border-color 0.2s;
-        }
-        .response-textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        table tbody tr {
-            transition: background-color 0.2s;
-        }
-        table tbody tr:hover {
-            background-color: #f7fafc;
-        }
         .approval-warning {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border-left: 4px solid #f59e0b;
-            padding: 2rem;
-            border-radius: 12px;
+            background: linear-gradient(135deg, var(--warning-light) 0%, #fde68a 100%);
+            border-left: 4px solid var(--warning);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
             text-align: center;
-            margin: 2rem 0;
+            margin: var(--spacing-xl) 0;
+            box-shadow: var(--shadow);
         }
         .approval-warning h2 {
             color: #92400e;
-            margin: 0 0 1rem 0;
+            margin: 0 0 var(--spacing-md) 0;
         }
         .approval-warning p {
             color: #78350f;
-            margin: 0 0 1.5rem 0;
+            margin: 0 0 var(--spacing-lg) 0;
+        }
+        .response-textarea {
+            width: 100%;
+            padding: var(--spacing-md);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            font-family: inherit;
+            resize: vertical;
+            margin-bottom: var(--spacing-sm);
+            transition: var(--transition);
+        }
+        .response-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
     </style>
 </head>
@@ -248,18 +172,21 @@ $stats = $conn->query("SELECT
 <div class="dashboard-container">
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h3>CMS Pro</h3>
+            <h3><i class="fas fa-chalkboard-teacher"></i> Teacher Portal</h3>
         </div>
         <nav class="sidebar-nav">
-            <a href="#" class="active"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="teacher_dashboard.php" class="active"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="teacher_dashboard.php#complaints"><i class="fas fa-list-alt"></i> All Complaints</a>
+            <div class="nav-divider"></div>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>
 
     <main class="main-content">
         <header class="top-bar">
-            <h1>Teacher Portal</h1>
+            <h1><i class="fas fa-tachometer-alt"></i> Teacher Dashboard</h1>
             <div class="user-info">
+                <i class="fas fa-user-circle"></i>
                 <span>Welcome, <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></span>
             </div>
         </header>
@@ -328,8 +255,8 @@ $stats = $conn->query("SELECT
                     </div>
                 </div>
 
-                <div class="card table-card">
-                    <h3><i class="fas fa-list"></i> All Student Complaints</h3>
+                <div class="card table-card" id="complaints">
+                    <h3><i class="fas fa-list-alt"></i> All Student Complaints</h3>
                     <div class="table-responsive">
                         <table>
                             <thead>
@@ -357,6 +284,12 @@ $stats = $conn->query("SELECT
                                     <td><?php echo htmlspecialchars($row['category_name'] ?? 'Uncategorized'); ?></td>
                                     <td>
                                         <span class="badge <?php echo strtolower(str_replace('_', '-', $row['status'])); ?>">
+                                            <i class="fas <?php 
+                                                if ($row['status'] === 'pending') echo 'fa-clock';
+                                                elseif ($row['status'] === 'in_progress') echo 'fa-spinner';
+                                                elseif ($row['status'] === 'resolved') echo 'fa-check-circle';
+                                                else echo 'fa-times-circle';
+                                            ?>"></i>
                                             <?php echo ucfirst(str_replace('_', ' ', $row['status'])); ?>
                                         </span>
                                     </td>
@@ -385,8 +318,8 @@ $stats = $conn->query("SELECT
 </div>
 
 <!-- Action Modal -->
-<div id="actionModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-    <div style="background:white; padding:2rem; border-radius:12px; max-width:500px; width:90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+<div id="actionModal" class="modal-overlay">
+    <div class="modal-content">
         <h3 style="margin-top: 0;">Update Complaint Status</h3>
         <form method="post" id="actionForm">
             <input type="hidden" name="complaint_id" id="modal_complaint_id">
@@ -427,7 +360,7 @@ $stats = $conn->query("SELECT
 <script>
 function showActionForm(complaintId, currentStatus) {
     document.getElementById('modal_complaint_id').value = complaintId;
-    document.getElementById('actionModal').style.display = 'flex';
+    document.getElementById('actionModal').classList.add('active');
 }
 
 function setAction(action) {
@@ -435,9 +368,14 @@ function setAction(action) {
     var responseGroup = document.getElementById('responseGroup');
     var responseField = document.getElementById('response');
     
-    if (action === 'resolve' || action === 'deny') {
+    if (action === 'resolve') {
         responseGroup.style.display = 'block';
         responseField.required = true;
+        responseField.placeholder = 'Provide details about the resolution...';
+    } else if (action === 'deny') {
+        responseGroup.style.display = 'block';
+        responseField.required = false; // Optional for deny
+        responseField.placeholder = 'Provide reason for denial (optional)...';
     } else {
         responseGroup.style.display = 'none';
         responseField.required = false;
@@ -445,7 +383,7 @@ function setAction(action) {
 }
 
 function closeModal() {
-    document.getElementById('actionModal').style.display = 'none';
+    document.getElementById('actionModal').classList.remove('active');
     document.getElementById('actionForm').reset();
     document.getElementById('responseGroup').style.display = 'none';
 }

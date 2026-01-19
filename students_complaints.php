@@ -31,23 +31,40 @@ $result = $stmt->get_result();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Complaints | Admin</title>
-    <link rel="stylesheet" href="style_adminadmin.css"> <link rel="stylesheet" href="style_admins.css">     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .action-cell {
+            display: flex;
+            gap: var(--spacing-sm);
         }
-        table tbody tr {
-            transition: background-color 0.2s;
+        .action-link {
+            padding: var(--spacing-sm);
+            border-radius: var(--radius);
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
         }
-        table tbody tr:hover {
-            background-color: #f7fafc;
+        .action-link.respond {
+            background: var(--info-light);
+            color: var(--info);
+        }
+        .action-link.respond:hover {
+            background: var(--info);
+            color: white;
+            transform: scale(1.1);
+        }
+        .action-link.delete {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+        .action-link.delete:hover {
+            background: var(--danger);
+            color: white;
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -55,7 +72,7 @@ $result = $stmt->get_result();
 
 <div class="dashboard-container">
     <aside class="sidebar">
-        <div class="sidebar-header"><h3>AdminCMS</h3></div>
+        <div class="sidebar-header"><h3><i class="fas fa-shield-alt"></i> Admin Panel</h3></div>
         <nav class="sidebar-nav">
             <a href="admin_dashboard.php"><i class="fas fa-chart-line"></i> Overview</a>
             <a href="teacher_approval.php"><i class="fas fa-user-check"></i> Teacher Requests</a>
@@ -71,9 +88,10 @@ $result = $stmt->get_result();
 
     <main class="main-content">
         <header class="top-bar">
-            <h1>Master Complaint List</h1>
-            <div class="user-pill">
-                <i class="fas fa-user-shield"></i> <?php echo htmlspecialchars($_SESSION['username']); ?>
+            <h1><i class="fas fa-list-alt"></i> Master Complaint List</h1>
+            <div class="admin-profile">
+                <i class="fas fa-user-shield"></i>
+                <span><?php echo htmlspecialchars($_SESSION['username']); ?></span>
             </div>
         </header>
 
@@ -136,6 +154,12 @@ $result = $stmt->get_result();
                                         <td><?php echo htmlspecialchars($row['category_name'] ?? 'Uncategorized'); ?></td>
                                         <td>
                                             <span class="badge <?php echo strtolower(str_replace('_', '-', $row['status'])); ?>">
+                                                <i class="fas <?php 
+                                                    if ($row['status'] === 'pending') echo 'fa-clock';
+                                                    elseif ($row['status'] === 'in_progress') echo 'fa-spinner';
+                                                    elseif ($row['status'] === 'resolved') echo 'fa-check-circle';
+                                                    else echo 'fa-times-circle';
+                                                ?>"></i>
                                                 <?php echo ucfirst(str_replace('_', ' ', $row['status'])); ?>
                                             </span>
                                         </td>
