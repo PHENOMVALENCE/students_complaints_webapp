@@ -135,6 +135,7 @@ $categories = $conn->query("SELECT c.*,
             <a href="manage_categories.php" class="active"><i class="fas fa-tags"></i> Categories</a>
             <a href="reports.php"><i class="fas fa-chart-bar"></i> Reports</a>
             <div class="nav-divider"></div>
+            <a href="profile.php"><i class="fas fa-user"></i> My Profile</a>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>

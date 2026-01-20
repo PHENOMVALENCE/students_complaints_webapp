@@ -12,13 +12,14 @@ require 'connect.php';
 $message = isset($_SESSION['message']) ? $_SESSION['message'] : "";
 unset($_SESSION['message']);
 
-// Fetch unapproved teachers
-$sql = "SELECT user_id, username, role, created_at FROM users WHERE role = 'teacher' AND approved = 0 ORDER BY created_at DESC";
+// Fetch unapproved teachers (created_at may not exist in users on all schemas; order by user_id)
+$sql = "SELECT user_id, username, role FROM users WHERE role = 'teacher' AND (approved = 0 OR approved IS NULL) ORDER BY user_id DESC";
 $result = $conn->query($sql);
 
-// Get statistics
-$pending_count = $result->num_rows;
-$approved_count = $conn->query("SELECT COUNT(*) as count FROM users WHERE role = 'teacher' AND approved = 1")->fetch_assoc()['count'];
+// Get statistics (guard against query failure)
+$pending_count = ($result && $result->num_rows >= 0) ? $result->num_rows : 0;
+$ac_result = $conn->query("SELECT COUNT(*) AS cnt FROM users WHERE role = 'teacher' AND approved = 1");
+$approved_count = ($ac_result && $row = $ac_result->fetch_assoc()) ? (int)$row['cnt'] : 0;
 ?>
 
 <!DOCTYPE html>
@@ -188,6 +189,7 @@ $approved_count = $conn->query("SELECT COUNT(*) as count FROM users WHERE role =
             <a href="manage_categories.php"><i class="fas fa-tags"></i> Categories</a>
             <a href="reports.php"><i class="fas fa-chart-bar"></i> Reports</a>
             <div class="nav-divider"></div>
+            <a href="profile.php"><i class="fas fa-user"></i> My Profile</a>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>
@@ -248,11 +250,8 @@ $approved_count = $conn->query("SELECT COUNT(*) as count FROM users WHERE role =
                                 </span>
                             </h4>
                             <div class="teacher-meta">
-                                <i class="fas fa-calendar"></i>
-                                <span>Requested: <?php echo date('M d, Y', strtotime($row['created_at'])); ?></span>
-                                <span style="margin: 0 var(--spacing-sm);">•</span>
                                 <i class="fas fa-id-badge"></i>
-                                <span>ID: #<?php echo $row['user_id']; ?></span>
+                                <span>ID: #<?php echo (int)$row['user_id']; ?></span>
                             </div>
                         </div>
                         <div class="approval-actions">

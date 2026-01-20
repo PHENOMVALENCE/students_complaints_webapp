@@ -70,13 +70,16 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
 
                             <div class="form-group">
                                 <label for="response"><i class="fas fa-reply"></i> Your Response <span class="required">*</span></label>
-                                <textarea id="response" name="response" required rows="8" placeholder="Enter your response or resolution details here..."></textarea>
-                                <small class="form-hint">Provide a clear and helpful response to the student's complaint.</small>
+                                <textarea id="response" name="response" rows="8" placeholder="Enter your response, resolution details, or reason for denial..."></textarea>
+                                <small class="form-hint">Provide a clear response. Required when resolving or denying.</small>
                             </div>
 
-                            <div style="display: flex; gap: var(--spacing-md);">
-                                <button type="submit" class="btn-submit">
-                                    <i class="fas fa-paper-plane"></i> Submit Response
+                            <div style="display: flex; gap: var(--spacing-md); flex-wrap: wrap;">
+                                <button type="submit" name="action" value="resolve" class="btn-submit" style="background: var(--success, #10b981);">
+                                    <i class="fas fa-check-circle"></i> Resolve
+                                </button>
+                                <button type="submit" name="action" value="deny" class="btn-submit" style="background: var(--danger, #ef4444);">
+                                    <i class="fas fa-times-circle"></i> Deny
                                 </button>
                                 <a href="students_complaints.php" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center;">
                                     <i class="fas fa-times"></i> Cancel

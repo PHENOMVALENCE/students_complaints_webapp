@@ -193,6 +193,7 @@ $recent_stmt->close();
             <a href="create_complaint.php"><i class="fas fa-plus-circle"></i> Submit Complaint</a>
             <a href="track_complaints.php"><i class="fas fa-list-alt"></i> Track Complaints</a>
             <div class="nav-divider"></div>
+            <a href="profile.php"><i class="fas fa-user"></i> My Profile</a>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>

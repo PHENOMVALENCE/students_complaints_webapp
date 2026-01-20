@@ -178,6 +178,7 @@ $stats = $conn->query("SELECT
             <a href="teacher_dashboard.php" class="active"><i class="fas fa-home"></i> Dashboard</a>
             <a href="teacher_dashboard.php#complaints"><i class="fas fa-list-alt"></i> All Complaints</a>
             <div class="nav-divider"></div>
+            <a href="profile.php"><i class="fas fa-user"></i> My Profile</a>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>

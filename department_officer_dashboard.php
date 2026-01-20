@@ -75,6 +75,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
                     $new_status = 'resolved';
                 }
                 break;
+            case 'deny':
+                if (empty($response)) {
+                    $_SESSION['message'] = "error|Please provide a reason when denying a complaint.";
+                    header("Location: department_officer_dashboard.php");
+                    exit;
+                } else {
+                    $new_status = 'denied';
+                }
+                break;
             default:
                 $_SESSION['message'] = "error|Invalid action.";
                 header("Location: department_officer_dashboard.php");
@@ -86,9 +95,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
             $update_stmt = $conn->prepare("UPDATE complaints SET status = ?, response = ?, updated_at = NOW() WHERE complaint_id = ?");
             $update_stmt->bind_param("ssi", $new_status, $response, $complaint_id);
             
-            if ($update_stmt->execute()) {
+                if ($update_stmt->execute()) {
                 // Log in history
-                $history_notes = $action === 'resolve' ? "Complaint resolved by department officer" : "Status changed to in progress by department officer";
+                $history_notes = $action === 'resolve' ? "Complaint resolved by department officer" : ($action === 'deny' ? "Complaint denied by department officer" : "Status changed to in progress by department officer");
                 $history_stmt = $conn->prepare("INSERT INTO complaint_history (complaint_id, action, performed_by, old_status, new_status, notes) VALUES (?, ?, ?, ?, ?, ?)");
                 $history_stmt->bind_param("isssss", $complaint_id, $action, $username, $old_status, $new_status, $history_notes);
                 $history_stmt->execute();
@@ -114,7 +123,7 @@ $stmt = $conn->prepare("SELECT c.*, u.username AS student_username, cat.category
                         LEFT JOIN complaint_categories cat ON c.category_id = cat.category_id
                         LEFT JOIN departments d ON c.department_id = d.department_id
                         WHERE c.department_id = ?
-                        ORDER BY FIELD(c.status, 'pending', 'in_progress', 'resolved'), c.created_at DESC");
+                        ORDER BY FIELD(c.status, 'pending', 'in_progress', 'resolved', 'denied'), c.created_at DESC");
 $stmt->bind_param("i", $department_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -194,6 +203,7 @@ $stats_stmt->close();
             <a href="department_officer_dashboard.php" class="active"><i class="fas fa-home"></i> Dashboard</a>
             <a href="department_officer_dashboard.php#complaints"><i class="fas fa-list-alt"></i> My Complaints</a>
             <div class="nav-divider"></div>
+            <a href="profile.php"><i class="fas fa-user"></i> My Profile</a>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>
@@ -348,13 +358,16 @@ $stats_stmt->close();
                     <button type="button" onclick="setAction('resolve')" class="btn-action btn-resolve">
                         <i class="fas fa-check"></i> Resolve
                     </button>
+                    <button type="button" onclick="setAction('deny')" class="btn-action btn-deny" style="background: #fee2e2; color: #dc2626;">
+                        <i class="fas fa-times"></i> Deny
+                    </button>
                 </div>
             </div>
             
             <div id="responseGroup" style="display:none; margin-bottom: var(--spacing-lg);">
-                <label for="response" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600;">Response/Resolution Details <span class="required">*</span></label>
-                <textarea id="response" name="response" class="response-textarea" rows="6" placeholder="Provide details about the resolution..."></textarea>
-                <small class="form-hint">This response will be visible to the student when the complaint is resolved.</small>
+                <label for="response" style="display: block; margin-bottom: var(--spacing-sm); font-weight: 600;">Response / Reason <span class="required">*</span></label>
+                <textarea id="response" name="response" class="response-textarea" rows="6" placeholder="Provide resolution details or reason for denial..."></textarea>
+                <small class="form-hint">This response will be visible to the student when the complaint is resolved or denied.</small>
             </div>
             
             <div style="display: flex; gap: var(--spacing-md);">
@@ -384,6 +397,10 @@ function setAction(action) {
         responseGroup.style.display = 'block';
         responseField.required = true;
         responseField.placeholder = 'Provide details about the resolution...';
+    } else if (action === 'deny') {
+        responseGroup.style.display = 'block';
+        responseField.required = true;
+        responseField.placeholder = 'Provide reason for denial...';
     } else {
         responseGroup.style.display = 'none';
         responseField.required = false;

@@ -12,7 +12,8 @@ require 'connect.php';
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $complaintId = isset($_POST['complaint_id']) ? (int)$_POST['complaint_id'] : 0;
     $response = isset($_POST['response']) ? trim($_POST['response']) : '';
-    $status = isset($_POST['status']) ? $_POST['status'] : 'resolved';
+    $action = isset($_POST['action']) ? $_POST['action'] : 'resolve';
+    $status = ($action === 'deny') ? 'denied' : 'resolved';
     
     // Validate complaint ID
     if ($complaintId <= 0) {
@@ -44,9 +45,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $status = 'resolved';
     }
     
-    // For resolved status, require a response
-    if ($status === 'resolved' && empty($response)) {
-        $_SESSION['message'] = "error|Please provide a response when resolving a complaint.";
+    // For resolved or denied, require a response
+    if (in_array($status, ['resolved', 'denied']) && empty($response)) {
+        $_SESSION['message'] = "error|Please provide a response when resolving or denying a complaint.";
         header("Location: " . ($_SESSION['role'] === 'admin' ? 'respond_complaints.php?id=' . $complaintId : 'teacher_dashboard.php'));
         exit;
     }
@@ -65,11 +66,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 : 'Status updated by ' . $_SESSION['role']);
         
         $history_stmt = $conn->prepare("INSERT INTO complaint_history (complaint_id, action, performed_by, old_status, new_status, notes) VALUES (?, ?, ?, ?, ?, ?)");
-        $history_stmt->bind_param("issss", $complaintId, $action, $_SESSION['username'], $old_status, $status, $notes);
+        $history_stmt->bind_param("isssss", $complaintId, $action, $_SESSION['username'], $old_status, $status, $notes);
         $history_stmt->execute();
         $history_stmt->close();
         
-        $_SESSION['message'] = "success|Complaint " . ($status === 'resolved' ? 'resolved' : 'updated') . " successfully!";
+        $_SESSION['message'] = "success|Complaint " . ($status === 'resolved' ? 'resolved' : ($status === 'denied' ? 'denied' : 'updated')) . " successfully!";
         
         // Redirect based on role
         if ($_SESSION['role'] === 'admin') {

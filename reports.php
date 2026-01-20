@@ -45,8 +45,24 @@ if ($date_to) {
 
 $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
 
+// Helper: run query with optional prepared params, return result or false
+$run_query = function($sql, $params = [], $types = '') use ($conn) {
+    if (count($params) > 0 && strlen($types) === count($params)) {
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) return false;
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $stmt->close();
+        return $res;
+    }
+    return $conn->query($sql);
+};
+
+$stats_default = ['total_complaints' => 0, 'pending' => 0, 'in_progress' => 0, 'resolved' => 0, 'denied' => 0, 'avg_resolution_hours' => null, 'min_resolution_hours' => null, 'max_resolution_hours' => null];
+
 // Reports Data
-// 1. Overall Statistics
+// 1. Overall Statistics (complaints table has no alias, so remove "c." from WHERE)
 $stats_query = "SELECT 
     COUNT(*) as total_complaints,
     SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
@@ -59,10 +75,10 @@ $stats_query = "SELECT
         THEN TIMESTAMPDIFF(HOUR, created_at, updated_at) ELSE NULL END) as min_resolution_hours,
     MAX(CASE WHEN status = 'resolved' AND updated_at IS NOT NULL 
         THEN TIMESTAMPDIFF(HOUR, created_at, updated_at) ELSE NULL END) as max_resolution_hours
-    FROM complaints " . 
-    ($where_clause ? str_replace('c.', '', $where_clause) : '');
+    FROM complaints " . ($where_clause ? str_replace('c.', '', $where_clause) : '');
 
-$stats = $conn->query($stats_query)->fetch_assoc();
+$stats_result = $run_query($stats_query, $params, $types);
+$stats = ($stats_result && $stats_result->num_rows > 0) ? $stats_result->fetch_assoc() : $stats_default;
 
 // 2. Complaints by Department
 $dept_query = "SELECT d.department_name, 
@@ -74,8 +90,7 @@ $dept_query = "SELECT d.department_name,
     AVG(CASE WHEN c.status = 'resolved' AND c.updated_at IS NOT NULL 
         THEN TIMESTAMPDIFF(HOUR, c.created_at, c.updated_at) ELSE NULL END) as avg_resolution_hours
     FROM departments d
-    LEFT JOIN complaints c ON d.department_id = c.department_id " . 
-    ($where_clause ? str_replace('c.', 'c.', $where_clause) : '') . "
+    LEFT JOIN complaints c ON d.department_id = c.department_id " . $where_clause . "
     GROUP BY d.department_id, d.department_name
     ORDER BY total DESC";
 
@@ -87,16 +102,18 @@ $cat_query = "SELECT cat.category_name,
     SUM(CASE WHEN c.status = 'resolved' THEN 1 ELSE 0 END) as resolved,
     SUM(CASE WHEN c.status = 'denied' THEN 1 ELSE 0 END) as denied
     FROM complaint_categories cat
-    LEFT JOIN complaints c ON cat.category_id = c.category_id " . 
-    ($where_clause ? str_replace('c.', 'c.', $where_clause) : '') . "
+    LEFT JOIN complaints c ON cat.category_id = c.category_id " . ($where_clause ? " " . $where_clause : "") . "
     GROUP BY cat.category_id, cat.category_name
     ORDER BY total DESC";
 
-$dept_stats = $conn->query($dept_query)->fetch_all(MYSQLI_ASSOC);
-$cat_stats = $conn->query($cat_query)->fetch_all(MYSQLI_ASSOC);
+$dept_result = $run_query($dept_query, $params, $types);
+$cat_result = $run_query($cat_query, $params, $types);
+$dept_stats = $dept_result ? $dept_result->fetch_all(MYSQLI_ASSOC) : [];
+$cat_stats = $cat_result ? $cat_result->fetch_all(MYSQLI_ASSOC) : [];
 
 // Get departments for filter
-$departments = $conn->query("SELECT * FROM departments ORDER BY department_name")->fetch_all(MYSQLI_ASSOC);
+$dept_list_result = $conn->query("SELECT * FROM departments ORDER BY department_name");
+$departments = $dept_list_result ? $dept_list_result->fetch_all(MYSQLI_ASSOC) : [];
 ?>
 
 <!DOCTYPE html>
@@ -208,6 +225,7 @@ $departments = $conn->query("SELECT * FROM departments ORDER BY department_name"
             <a href="manage_categories.php"><i class="fas fa-tags"></i> Categories</a>
             <a href="reports.php" class="active"><i class="fas fa-chart-bar"></i> Reports</a>
             <div class="nav-divider"></div>
+            <a href="profile.php"><i class="fas fa-user"></i> My Profile</a>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </aside>
