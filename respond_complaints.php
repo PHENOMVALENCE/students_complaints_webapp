@@ -12,8 +12,12 @@ require 'connect.php';
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
     $complaintId = $_GET['id'];
 
-    
-    $sql = "SELECT * FROM complaints WHERE complaint_id = ?";
+    // Fetch complaint with related data
+    $sql = "SELECT c.*, d.department_name, cat.category_name 
+            FROM complaints c
+            LEFT JOIN departments d ON c.department_id = d.department_id
+            LEFT JOIN complaint_categories cat ON c.category_id = cat.category_id
+            WHERE c.complaint_id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("i", $complaintId);
     $stmt->execute();
@@ -21,6 +25,15 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
 
     if ($result->num_rows > 0) {
         $complaint = $result->fetch_assoc();
+        $stmt->close();
+        
+        // Fetch attachments
+        $attach_stmt = $conn->prepare("SELECT * FROM complaint_attachments WHERE complaint_id = ? ORDER BY uploaded_at ASC");
+        $attach_stmt->bind_param("i", $complaintId);
+        $attach_stmt->execute();
+        $attach_result = $attach_stmt->get_result();
+        $attachments = $attach_result->fetch_all(MYSQLI_ASSOC);
+        $attach_stmt->close();
         ?>
         <!DOCTYPE html>
         <html lang="en">
@@ -53,8 +66,22 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
                     </div>
                 </header>
                 <section class="content-wrapper">
+                    <div style="margin-bottom: var(--spacing-md);">
+                        <a href="view_complaint_detail.php?id=<?php echo $complaint['complaint_id']; ?>" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: var(--spacing-sm);">
+                            <i class="fas fa-eye"></i> View Full Details
+                        </a>
+                    </div>
+                    
                     <div class="card" style="max-width: 800px; margin: 0 auto;">
                         <h3><i class="fas fa-file-invoice"></i> Complaint #<?php echo $complaint['complaint_id']; ?></h3>
+                        
+                        <div style="background: var(--info-light); padding: var(--spacing-md); border-radius: var(--radius); margin-bottom: var(--spacing-lg); border-left: 4px solid var(--info);">
+                            <strong><i class="fas fa-info-circle"></i> Quick Response Form</strong>
+                            <p style="margin: var(--spacing-xs) 0 0 0; font-size: 0.875rem; color: var(--text-secondary);">
+                                For complete complaint details including attachments, collaboration notes, and history, use the "View Full Details" button above.
+                            </p>
+                        </div>
+                        
                         <form action="process_response.php" method="post">
                             <input type="hidden" name="complaint_id" value="<?php echo $complaint['complaint_id']; ?>">
                             
@@ -62,11 +89,37 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
                                 <label for="student_username"><i class="fas fa-user"></i> Student Username</label>
                                 <input type="text" id="student_username" name="student_username" value="<?php echo htmlspecialchars($complaint['student_username']); ?>" readonly>
                             </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-building"></i> Department</label>
+                                <input type="text" value="<?php echo htmlspecialchars($complaint['department_name'] ?? 'N/A'); ?>" readonly>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-tag"></i> Category</label>
+                                <input type="text" value="<?php echo htmlspecialchars($complaint['category_name'] ?? 'Uncategorized'); ?>" readonly>
+                            </div>
 
                             <div class="form-group">
                                 <label for="complaint"><i class="fas fa-comment-alt"></i> Original Complaint</label>
                                 <textarea id="complaint" name="complaint" readonly rows="6"><?php echo htmlspecialchars($complaint['complaint']); ?></textarea>
                             </div>
+                            
+                            <?php if (!empty($attachments)): ?>
+                            <div class="form-group">
+                                <label><i class="fas fa-paperclip"></i> Attachments (<?php echo count($attachments); ?>)</label>
+                                <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-xs);">
+                                    <?php foreach ($attachments as $attach): ?>
+                                        <a href="download_attachment.php?id=<?php echo $attach['attachment_id']; ?>" target="_blank" style="display: inline-flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-sm) var(--spacing-md); background: var(--bg-light); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text-primary); font-size: 0.875rem;">
+                                            <i class="fas <?php echo $attach['file_type'] === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image'; ?>" style="color: <?php echo $attach['file_type'] === 'application/pdf' ? '#dc2626' : '#10b981'; ?>;"></i>
+                                            <span><?php echo htmlspecialchars($attach['file_name']); ?></span>
+                                            <i class="fas fa-external-link-alt" style="font-size: 0.75rem; opacity: 0.7;"></i>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                                <small class="form-hint">Click to view/download files</small>
+                            </div>
+                            <?php endif; ?>
 
                             <div class="form-group">
                                 <label for="response"><i class="fas fa-reply"></i> Your Response <span class="required">*</span></label>

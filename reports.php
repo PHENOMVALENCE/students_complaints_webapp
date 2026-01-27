@@ -315,7 +315,7 @@ $departments = $dept_list_result ? $dept_list_result->fetch_all(MYSQLI_ASSOC) : 
             <div class="card">
                 <h3><i class="fas fa-building"></i> Complaints by Department</h3>
                 <div class="table-responsive">
-                    <table>
+                    <table class="datatable">
                         <thead>
                             <tr>
                                 <th>Department</th>
@@ -338,9 +338,7 @@ $departments = $dept_list_result ? $dept_list_result->fetch_all(MYSQLI_ASSOC) : 
                                     <td><span class="badge denied"><?php echo $stat['denied']; ?></span></td>
                                     <td><?php echo $stat['avg_resolution_hours'] ? round($stat['avg_resolution_hours']) . ' hrs' : 'N/A'; ?></td>
                                 </tr>
-                            <?php endforeach; else: ?>
-                                <tr><td colspan="7" class="empty">No department data available.</td></tr>
-                            <?php endif; ?>
+                            <?php endforeach; endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -349,7 +347,7 @@ $departments = $dept_list_result ? $dept_list_result->fetch_all(MYSQLI_ASSOC) : 
             <div class="card">
                 <h3><i class="fas fa-tags"></i> Complaints by Category</h3>
                 <div class="table-responsive">
-                    <table>
+                    <table class="datatable">
                         <thead>
                             <tr>
                                 <th>Category</th>
@@ -370,9 +368,7 @@ $departments = $dept_list_result ? $dept_list_result->fetch_all(MYSQLI_ASSOC) : 
                                     <td><span class="badge resolved"><?php echo $stat['resolved']; ?></span></td>
                                     <td><span class="badge denied"><?php echo $stat['denied']; ?></span></td>
                                 </tr>
-                            <?php endforeach; else: ?>
-                                <tr><td colspan="6" class="empty">No category data available.</td></tr>
-                            <?php endif; ?>
+                            <?php endforeach; endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -381,5 +377,6 @@ $departments = $dept_list_result ? $dept_list_result->fetch_all(MYSQLI_ASSOC) : 
     </main>
 </div>
 
+<?php require_once 'includes/datatables.inc.php'; ?>
 </body>
 </html>

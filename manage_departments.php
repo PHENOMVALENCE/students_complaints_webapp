@@ -212,7 +212,7 @@ $departments = $conn->query("SELECT d.*,
             <div class="card">
                 <h3><i class="fas fa-list"></i> All Departments (<?php echo count($departments); ?>)</h3>
                 <div class="table-responsive">
-                    <table>
+                    <table class="datatable datatable-desc">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -220,7 +220,7 @@ $departments = $conn->query("SELECT d.*,
                                 <th>Description</th>
                                 <th>Complaints</th>
                                 <th>Officers</th>
-                                <th>Actions</th>
+                                <th data-orderable="false">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -250,9 +250,7 @@ $departments = $conn->query("SELECT d.*,
                                         </div>
                                     </td>
                                 </tr>
-                            <?php endforeach; else: ?>
-                                <tr><td colspan="6" class="empty">No departments found. Add your first department above.</td></tr>
-                            <?php endif; ?>
+                            <?php endforeach; endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -261,5 +259,6 @@ $departments = $conn->query("SELECT d.*,
     </main>
 </div>
 
+<?php require_once 'includes/datatables.inc.php'; ?>
 </body>
 </html>

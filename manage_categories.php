@@ -203,14 +203,14 @@ $categories = $conn->query("SELECT c.*,
             <div class="card">
                 <h3><i class="fas fa-list"></i> All Categories (<?php echo count($categories); ?>)</h3>
                 <div class="table-responsive">
-                    <table>
+                    <table class="datatable datatable-desc">
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>Category Name</th>
                                 <th>Description</th>
                                 <th>Complaints</th>
-                                <th>Actions</th>
+                                <th data-orderable="false">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -235,9 +235,7 @@ $categories = $conn->query("SELECT c.*,
                                         </div>
                                     </td>
                                 </tr>
-                            <?php endforeach; else: ?>
-                                <tr><td colspan="5" class="empty">No categories found. Add your first category above.</td></tr>
-                            <?php endif; ?>
+                            <?php endforeach; endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -246,5 +244,6 @@ $categories = $conn->query("SELECT c.*,
     </main>
 </div>
 
+<?php require_once 'includes/datatables.inc.php'; ?>
 </body>
 </html>

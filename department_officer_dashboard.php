@@ -116,19 +116,72 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
     }
 }
 
+// Get search and filter parameters
+$search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+$filter_status = isset($_GET['status']) ? $_GET['status'] : '';
+$filter_category = isset($_GET['category']) ? (int)$_GET['category'] : 0;
+$date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
+$date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
+
+// Build WHERE clause
+$where_conditions = ["c.department_id = ?"];
+$params = [$department_id];
+$param_types = "i";
+
+if (!empty($search_query)) {
+    $where_conditions[] = "(c.complaint_id = ? OR c.title LIKE ? OR c.complaint LIKE ? OR u.username LIKE ?)";
+    $params[] = (int)$search_query;
+    $search_like = "%{$search_query}%";
+    $params[] = $search_like;
+    $params[] = $search_like;
+    $params[] = $search_like;
+    $param_types .= "isss";
+}
+
+if (!empty($filter_status) && in_array($filter_status, ['pending', 'in_progress', 'resolved', 'denied', 'awaiting_student_response'])) {
+    $where_conditions[] = "c.status = ?";
+    $params[] = $filter_status;
+    $param_types .= "s";
+}
+
+if ($filter_category > 0) {
+    $where_conditions[] = "c.category_id = ?";
+    $params[] = $filter_category;
+    $param_types .= "i";
+}
+
+if (!empty($date_from)) {
+    $where_conditions[] = "DATE(c.created_at) >= ?";
+    $params[] = $date_from;
+    $param_types .= "s";
+}
+
+if (!empty($date_to)) {
+    $where_conditions[] = "DATE(c.created_at) <= ?";
+    $params[] = $date_to;
+    $param_types .= "s";
+}
+
+$where_clause = "WHERE " . implode(" AND ", $where_conditions);
+
 // Fetch complaints for this department
-$stmt = $conn->prepare("SELECT c.*, u.username AS student_username, cat.category_name, d.department_name
-                        FROM complaints c
-                        JOIN users u ON c.student_username = u.username
-                        LEFT JOIN complaint_categories cat ON c.category_id = cat.category_id
-                        LEFT JOIN departments d ON c.department_id = d.department_id
-                        WHERE c.department_id = ?
-                        ORDER BY FIELD(c.status, 'pending', 'in_progress', 'resolved', 'denied'), c.created_at DESC");
-$stmt->bind_param("i", $department_id);
+$sql = "SELECT c.*, u.username AS student_username, cat.category_name, d.department_name
+        FROM complaints c
+        JOIN users u ON c.student_username = u.username
+        LEFT JOIN complaint_categories cat ON c.category_id = cat.category_id
+        LEFT JOIN departments d ON c.department_id = d.department_id
+        $where_clause
+        ORDER BY FIELD(c.status, 'pending', 'awaiting_student_response', 'in_progress', 'resolved', 'denied'), c.created_at DESC";
+
+$stmt = $conn->prepare($sql);
+$stmt->bind_param($param_types, ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
 $complaints = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
+
+// Get categories for filter
+$categories = $conn->query("SELECT * FROM complaint_categories ORDER BY category_name")->fetch_all(MYSQLI_ASSOC);
 
 // Get statistics
 $stats_stmt = $conn->prepare("SELECT 
@@ -282,8 +335,57 @@ $stats_stmt->close();
 
             <div class="card" id="complaints">
                 <h3><i class="fas fa-list-alt"></i> Department Complaints</h3>
+                
+                <!-- Search and Filter Form -->
+                <form method="get" style="margin-bottom: var(--spacing-lg); padding: var(--spacing-lg); background: var(--bg-light); border-radius: var(--radius);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                        <div>
+                            <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: 600; font-size: 0.875rem;">Search</label>
+                            <input type="text" name="search" placeholder="ID, title, student..." value="<?php echo htmlspecialchars($search_query); ?>" style="width: 100%; padding: var(--spacing-sm); border: 2px solid var(--border); border-radius: var(--radius);">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: 600; font-size: 0.875rem;">Status</label>
+                            <select name="status" style="width: 100%; padding: var(--spacing-sm); border: 2px solid var(--border); border-radius: var(--radius);">
+                                <option value="">All Statuses</option>
+                                <option value="pending" <?php echo $filter_status === 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                <option value="awaiting_student_response" <?php echo $filter_status === 'awaiting_student_response' ? 'selected' : ''; ?>>Awaiting Response</option>
+                                <option value="in_progress" <?php echo $filter_status === 'in_progress' ? 'selected' : ''; ?>>In Progress</option>
+                                <option value="resolved" <?php echo $filter_status === 'resolved' ? 'selected' : ''; ?>>Resolved</option>
+                                <option value="denied" <?php echo $filter_status === 'denied' ? 'selected' : ''; ?>>Denied</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: 600; font-size: 0.875rem;">Category</label>
+                            <select name="category" style="width: 100%; padding: var(--spacing-sm); border: 2px solid var(--border); border-radius: var(--radius);">
+                                <option value="0">All Categories</option>
+                                <?php foreach ($categories as $cat): ?>
+                                    <option value="<?php echo $cat['category_id']; ?>" <?php echo $filter_category == $cat['category_id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($cat['category_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: 600; font-size: 0.875rem;">Date From</label>
+                            <input type="date" name="date_from" value="<?php echo htmlspecialchars($date_from); ?>" style="width: 100%; padding: var(--spacing-sm); border: 2px solid var(--border); border-radius: var(--radius);">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: var(--spacing-xs); font-weight: 600; font-size: 0.875rem;">Date To</label>
+                            <input type="date" name="date_to" value="<?php echo htmlspecialchars($date_to); ?>" style="width: 100%; padding: var(--spacing-sm); border: 2px solid var(--border); border-radius: var(--radius);">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: var(--spacing-sm);">
+                        <button type="submit" class="btn-submit" style="flex: 1;">
+                            <i class="fas fa-search"></i> Search & Filter
+                        </button>
+                        <a href="department_officer_dashboard.php" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; padding: var(--spacing-md) var(--spacing-lg);">
+                            <i class="fas fa-redo"></i> Reset
+                        </a>
+                    </div>
+                </form>
+                
                 <div class="table-responsive">
-                    <table>
+                    <table class="datatable datatable-desc">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -292,7 +394,7 @@ $stats_stmt->close();
                                 <th>Category</th>
                                 <th>Status</th>
                                 <th>Date</th>
-                                <th>Actions</th>
+                                <th data-orderable="false">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -316,13 +418,24 @@ $stats_stmt->close();
                                         <?php echo ucfirst(str_replace('_', ' ', $row['status'])); ?>
                                     </span>
                                 </td>
-                                <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
+                                <td>
+                                    <?php echo date('M d, Y', strtotime($row['created_at'])); ?>
+                                    <?php if ($row['attachment_count'] > 0): ?>
+                                        <br><small style="color: var(--primary); display: flex; align-items: center; gap: 4px; margin-top: 4px;"><i class="fas fa-paperclip"></i> <?php echo $row['attachment_count']; ?> file(s)</small>
+                                    <?php endif; ?>
+                                    <?php if ($row['pending_requests'] > 0): ?>
+                                        <br><small style="color: var(--warning); display: flex; align-items: center; gap: 4px; margin-top: 4px;"><i class="fas fa-question-circle"></i> <?php echo $row['pending_requests']; ?> request(s)</small>
+                                    <?php endif; ?>
+                                    <?php if ($row['note_count'] > 0): ?>
+                                        <br><small style="color: var(--info); display: flex; align-items: center; gap: 4px; margin-top: 4px;"><i class="fas fa-comments"></i> <?php echo $row['note_count']; ?> note(s)</small>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
                                         <a href="view_complaint_detail.php?id=<?php echo $row['complaint_id']; ?>" class="btn-view" title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <?php if ($row['status'] === 'pending' || $row['status'] === 'in_progress'): ?>
+                                        <?php if ($row['status'] === 'pending' || $row['status'] === 'in_progress' || $row['status'] === 'awaiting_student_response'): ?>
                                             <button onclick="showActionForm(<?php echo $row['complaint_id']; ?>, '<?php echo $row['status']; ?>')" class="btn-view" title="Update Status" style="background: none; border: none; cursor: pointer;">
                                                 <i class="fas fa-edit"></i>
                                             </button>
@@ -330,9 +443,7 @@ $stats_stmt->close();
                                     </div>
                                 </td>
                             </tr>
-                            <?php endforeach; else: ?>
-                                <tr><td colspan="7" class="empty">No complaints assigned to your department yet.</td></tr>
-                            <?php endif; ?>
+                            <?php endforeach; endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -414,5 +525,6 @@ function closeModal() {
 }
 </script>
 
+<?php require_once 'includes/datatables.inc.php'; ?>
 </body>
 </html>

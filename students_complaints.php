@@ -8,8 +8,10 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
 
 require 'connect.php';
 
-// Joining complaints with users, departments, and categories
-$sql = "SELECT c.*, u.username AS student_username, d.department_name, cat.category_name
+// Joining complaints with users, departments, categories, and attachment counts
+$sql = "SELECT c.*, u.username AS student_username, d.department_name, cat.category_name,
+        (SELECT COUNT(*) FROM complaint_attachments WHERE complaint_id = c.complaint_id) as attachment_count,
+        (SELECT COUNT(*) FROM information_requests WHERE complaint_id = c.complaint_id AND status = 'pending') as pending_requests
         FROM complaints c
         JOIN users u ON c.student_username = u.username
         LEFT JOIN departments d ON c.department_id = d.department_id
@@ -128,7 +130,7 @@ $result = $stmt->get_result();
                 </div>
 
                 <div class="table-responsive">
-                    <table class="modern-table">
+                    <table class="modern-table datatable datatable-desc">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -138,7 +140,7 @@ $result = $stmt->get_result();
                                 <th>Category</th>
                                 <th>Status</th>
                                 <th>Date</th>
-                                <th>Actions</th>
+                                <th data-orderable="false">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -164,7 +166,15 @@ $result = $stmt->get_result();
                                                 <?php echo ucfirst(str_replace('_', ' ', $row['status'])); ?>
                                             </span>
                                         </td>
-                                        <td><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
+                                        <td>
+                                            <?php echo date('M d, Y', strtotime($row['created_at'])); ?>
+                                            <?php if ($row['attachment_count'] > 0): ?>
+                                                <br><small style="color: var(--primary);"><i class="fas fa-paperclip"></i> <?php echo $row['attachment_count']; ?> file(s)</small>
+                                            <?php endif; ?>
+                                            <?php if ($row['pending_requests'] > 0): ?>
+                                                <br><small style="color: var(--warning);"><i class="fas fa-question-circle"></i> <?php echo $row['pending_requests']; ?> request(s)</small>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="action-cell">
                                             <a href="view_complaint_detail.php?id=<?php echo $row['complaint_id']; ?>" class="action-link respond" title="View Details">
                                                 <i class="fas fa-eye"></i>
@@ -181,8 +191,6 @@ $result = $stmt->get_result();
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
-                            <?php else: ?>
-                                <tr><td colspan="8" class="empty">No complaints found in the system.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -192,5 +200,6 @@ $result = $stmt->get_result();
     </main>
 </div>
 
+<?php require_once 'includes/datatables.inc.php'; ?>
 </body>
 </html>

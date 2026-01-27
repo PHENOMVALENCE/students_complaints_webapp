@@ -43,18 +43,19 @@ $where_clause = "WHERE c.student_username = ?";
 $params = [$student_username];
 $param_types = "s";
 
-if ($filter !== 'all' && in_array($filter, ['pending', 'in_progress', 'resolved', 'denied'])) {
+if ($filter !== 'all' && in_array($filter, ['pending', 'in_progress', 'resolved', 'denied', 'awaiting_student_response'])) {
     $where_clause .= " AND c.status = ?";
     $params[] = $filter;
     $param_types .= "s";
 }
 
-$sql = "SELECT c.*, d.department_name, cat.category_name 
+$sql = "SELECT c.*, d.department_name, cat.category_name,
+        (SELECT COUNT(*) FROM information_requests WHERE complaint_id = c.complaint_id AND status = 'pending') as pending_requests
         FROM complaints c 
         LEFT JOIN departments d ON c.department_id = d.department_id 
         LEFT JOIN complaint_categories cat ON c.category_id = cat.category_id 
         $where_clause
-        ORDER BY c.created_at DESC";
+        ORDER BY FIELD(c.status, 'awaiting_student_response', 'pending', 'in_progress', 'resolved', 'denied'), c.created_at DESC";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param($param_types, ...$params);
@@ -63,9 +64,9 @@ $result = $stmt->get_result();
 $complaints = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Get counts for filter tabs
+// Get counts for filter tabs (include awaiting_student_response)
 $counts = [];
-$statuses = ['all', 'pending', 'in_progress', 'resolved', 'denied'];
+$statuses = ['all', 'awaiting_student_response', 'pending', 'in_progress', 'resolved', 'denied'];
 foreach ($statuses as $status) {
     if ($status === 'all') {
         $count_stmt = $conn->prepare("SELECT COUNT(*) as count FROM complaints WHERE student_username = ?");
@@ -80,6 +81,14 @@ foreach ($statuses as $status) {
     $counts[$status] = $count_data['count'];
     $count_stmt->close();
 }
+
+// Pending info requests count (for "action needed" highlight)
+$action_needed_stmt = $conn->prepare("SELECT COUNT(DISTINCT c.complaint_id) as cnt FROM complaints c JOIN information_requests ir ON ir.complaint_id = c.complaint_id WHERE c.student_username = ? AND ir.status = 'pending'");
+$action_needed_stmt->bind_param("s", $student_username);
+$action_needed_stmt->execute();
+$action_needed_result = $action_needed_stmt->get_result();
+$action_needed_count = $action_needed_result->fetch_assoc()['cnt'] ?? 0;
+$action_needed_stmt->close();
 ?>
 
 <!DOCTYPE html>
@@ -166,6 +175,11 @@ foreach ($statuses as $status) {
         
         .complaint-card.pending {
             border-left-color: var(--warning);
+        }
+        
+        .complaint-card.awaiting-student-response {
+            border-left-color: var(--warning);
+            border-left-width: 6px;
         }
         
         .complaint-card.in-progress {
@@ -312,10 +326,21 @@ foreach ($statuses as $status) {
                 </script>
             <?php endif; ?>
 
+            <?php if ($action_needed_count > 0): ?>
+            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 6px solid var(--warning); padding: var(--spacing-lg); border-radius: var(--radius-lg); margin-bottom: var(--spacing-xl);">
+                <strong style="color: #92400e;"><i class="fas fa-exclamation-circle"></i> Action required</strong>
+                <p style="margin: var(--spacing-xs) 0 0 0; color: #78350f;">You have <?php echo $action_needed_count; ?> complaint(s) with a request for more information from staff. Open them and submit your response.</p>
+            </div>
+            <?php endif; ?>
+
             <div class="filter-tabs">
                 <a href="track_complaints.php?filter=all" class="filter-tab <?php echo $filter === 'all' ? 'active' : ''; ?>">
                     <i class="fas fa-list"></i> All
                     <span class="badge"><?php echo $counts['all']; ?></span>
+                </a>
+                <a href="track_complaints.php?filter=awaiting_student_response" class="filter-tab <?php echo $filter === 'awaiting_student_response' ? 'active' : ''; ?>" style="<?php echo $action_needed_count > 0 ? 'border-bottom: 2px solid var(--warning);' : ''; ?>">
+                    <i class="fas fa-user-check"></i> Awaiting your response
+                    <span class="badge"><?php echo $counts['awaiting_student_response']; ?></span>
                 </a>
                 <a href="track_complaints.php?filter=pending" class="filter-tab <?php echo $filter === 'pending' ? 'active' : ''; ?>">
                     <i class="fas fa-clock"></i> Pending
@@ -347,11 +372,17 @@ foreach ($statuses as $status) {
                             <i class="fas <?php 
                                 if ($row['status'] === 'pending') echo 'fa-clock';
                                 elseif ($row['status'] === 'in_progress') echo 'fa-spinner';
+                                elseif ($row['status'] === 'awaiting_student_response') echo 'fa-user-check';
                                 elseif ($row['status'] === 'resolved') echo 'fa-check-circle';
                                 else echo 'fa-times-circle';
                             ?>"></i>
                             <?php echo ucfirst(str_replace('_', ' ', $row['status'])); ?>
                         </span>
+                        <?php if (($row['pending_requests'] ?? 0) > 0): ?>
+                            <span style="margin-left: var(--spacing-sm); padding: 2px 8px; background: var(--warning); color: #78350f; border-radius: var(--radius); font-size: 0.75rem; font-weight: 600;">
+                                <i class="fas fa-exclamation-circle"></i> Response needed
+                            </span>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="complaint-description">
@@ -381,10 +412,15 @@ foreach ($statuses as $status) {
                     </div>
                     
                     <div class="complaint-actions">
+                        <?php if (($row['pending_requests'] ?? 0) > 0): ?>
+                        <a href="view_complaint_detail.php?id=<?php echo $row['complaint_id']; ?>#info-requests" class="btn btn-primary" style="background: var(--warning); border-color: var(--warning);">
+                            <i class="fas fa-reply"></i> Respond to Request
+                        </a>
+                        <?php endif; ?>
                         <a href="view_complaint_detail.php?id=<?php echo $row['complaint_id']; ?>" class="btn btn-primary">
                             <i class="fas fa-eye"></i> View Details
                         </a>
-                        <?php if ($row['status'] === 'pending'): ?>
+                        <?php if ($row['status'] === 'pending' && empty($row['pending_requests'])): ?>
                         <a href="?delete=<?php echo $row['complaint_id']; ?>" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this complaint? This action cannot be undone.')">
                             <i class="fas fa-trash"></i> Delete
                         </a>
@@ -400,7 +436,7 @@ foreach ($statuses as $status) {
                         <?php if ($filter === 'all'): ?>
                             You haven't submitted any complaints yet. Start by creating your first complaint!
                         <?php else: ?>
-                            You don't have any <?php echo ucfirst(str_replace('_', ' ', $filter)); ?> complaints at the moment.
+                            You don't have any <?php echo $filter === 'awaiting_student_response' ? 'complaints awaiting your response' : ucfirst(str_replace('_', ' ', $filter)); ?> complaints at the moment.
                         <?php endif; ?>
                     </p>
                     <?php if ($filter === 'all'): ?>

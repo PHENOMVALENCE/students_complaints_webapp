@@ -20,6 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['complaint'])) {
     $complaint = trim($_POST['complaint']);
     $category_id = isset($_POST['category_id']) ? (int)$_POST['category_id'] : null;
     $department_id = isset($_POST['department_id']) ? (int)$_POST['department_id'] : null;
+    $is_anonymous = isset($_POST['is_anonymous']) ? 1 : 0;
     $student_username = $_SESSION['username'];
     
     // Validation
@@ -30,20 +31,65 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['complaint'])) {
     } elseif (!$department_id) {
         $message = "error|Please select a department.";
     } else {
-        // Prepare insert statement
-        $stmt = $conn->prepare("INSERT INTO complaints (student_username, title, complaint, category_id, department_id, status, routed_at) VALUES (?, ?, ?, ?, ?, 'pending', NOW())");
-        $stmt->bind_param("sssii", $student_username, $title, $complaint, $category_id, $department_id);
+        // Prepare insert statement (include is_anonymous)
+        $stmt = $conn->prepare("INSERT INTO complaints (student_username, title, complaint, category_id, department_id, status, routed_at, is_anonymous) VALUES (?, ?, ?, ?, ?, 'pending', NOW(), ?)");
+        $stmt->bind_param("sssiii", $student_username, $title, $complaint, $category_id, $department_id, $is_anonymous);
         
         if ($stmt->execute()) {
             $complaint_id = $conn->insert_id;
             
+            // Handle file uploads
+            $upload_dir = "uploads/complaints/{$complaint_id}/";
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            
+            $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+            $max_size = 5 * 1024 * 1024; // 5MB
+            
+            if (!empty($_FILES['attachments']['name'][0])) {
+                $file_count = count($_FILES['attachments']['name']);
+                for ($i = 0; $i < $file_count; $i++) {
+                    if ($_FILES['attachments']['error'][$i] === UPLOAD_ERR_OK) {
+                        $file_name = $_FILES['attachments']['name'][$i];
+                        $file_tmp = $_FILES['attachments']['tmp_name'][$i];
+                        $file_size = $_FILES['attachments']['size'][$i];
+                        $file_type = $_FILES['attachments']['type'][$i];
+                        
+                        // Validate file type
+                        if (!in_array($file_type, $allowed_types)) {
+                            continue; // Skip invalid files
+                        }
+                        
+                        // Validate file size
+                        if ($file_size > $max_size) {
+                            continue; // Skip oversized files
+                        }
+                        
+                        // Generate unique filename
+                        $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
+                        $unique_name = uniqid() . '_' . time() . '.' . $file_ext;
+                        $file_path = $upload_dir . $unique_name;
+                        
+                        if (move_uploaded_file($file_tmp, $file_path)) {
+                            // Store attachment in database
+                            $attach_stmt = $conn->prepare("INSERT INTO complaint_attachments (complaint_id, file_name, file_path, file_type, file_size) VALUES (?, ?, ?, ?, ?)");
+                            $attach_stmt->bind_param("isssi", $complaint_id, $file_name, $file_path, $file_type, $file_size);
+                            $attach_stmt->execute();
+                            $attach_stmt->close();
+                        }
+                    }
+                }
+            }
+            
             // Log the complaint creation in history
-            $history_stmt = $conn->prepare("INSERT INTO complaint_history (complaint_id, action, performed_by, new_status, notes) VALUES (?, 'submitted', ?, 'pending', 'Complaint submitted and routed to department')");
-            $history_stmt->bind_param("is", $complaint_id, $student_username);
+            $history_stmt = $conn->prepare("INSERT INTO complaint_history (complaint_id, action, performed_by, new_status, notes) VALUES (?, 'submitted', ?, 'pending', ?)");
+            $history_note = $is_anonymous ? 'Complaint submitted anonymously and routed to department' : 'Complaint submitted and routed to department';
+            $history_stmt->bind_param("iss", $complaint_id, $student_username, $history_note);
             $history_stmt->execute();
             $history_stmt->close();
             
-            $_SESSION['message'] = "success|Complaint #{$complaint_id} submitted successfully and routed to department!";
+            $_SESSION['message'] = "success|Complaint #{$complaint_id} submitted successfully and routed to department!{$upload_info}";
             header("Location: track_complaints.php");
             exit;
         } else {
@@ -257,6 +303,33 @@ if (isset($_SESSION['message'])) {
                         </div>
                     </div>
 
+                    <div class="form-section">
+                        <h3><i class="fas fa-paperclip"></i> Evidence Attachments</h3>
+                        
+                        <div class="form-group">
+                            <label for="attachments"><i class="fas fa-file-upload"></i> Supporting Documents</label>
+                            <input type="file" id="attachments" name="attachments[]" multiple accept=".pdf,.jpg,.jpeg,.png,.gif">
+                            <small class="form-hint">
+                                <i class="fas fa-info-circle"></i> You can upload multiple files (PDF or images). Maximum file size: 5MB per file. Accepted formats: PDF, JPG, PNG, GIF.
+                            </small>
+                            <div id="fileList" style="margin-top: var(--spacing-md);"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3><i class="fas fa-user-secret"></i> Privacy Options</h3>
+                        
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: var(--spacing-sm); cursor: pointer;">
+                                <input type="checkbox" id="is_anonymous" name="is_anonymous" value="1" style="width: auto;">
+                                <span><i class="fas fa-eye-slash"></i> Submit this complaint anonymously</span>
+                            </label>
+                            <small class="form-hint">
+                                <i class="fas fa-shield-alt"></i> When enabled, your identity will be hidden from department staff. Administrators can still view your identity for system management purposes.
+                            </small>
+                        </div>
+                    </div>
+
                     <div class="form-actions">
                         <button type="submit" class="btn-submit" style="flex: 1;">
                             <i class="fas fa-paper-plane"></i> Submit Complaint
@@ -281,6 +354,63 @@ if (isset($_SESSION['message'])) {
             titleCount.textContent = this.value.length;
         });
         titleCount.textContent = titleInput.value.length;
+    }
+
+    // File upload preview
+    const fileInput = document.getElementById('attachments');
+    const fileList = document.getElementById('fileList');
+    
+    if (fileInput && fileList) {
+        fileInput.addEventListener('change', function() {
+            fileList.innerHTML = '';
+            const files = this.files;
+            
+            if (files.length > 0) {
+                const list = document.createElement('ul');
+                list.style.listStyle = 'none';
+                list.style.padding = '0';
+                list.style.margin = '0';
+                
+                Array.from(files).forEach((file, index) => {
+                    const li = document.createElement('li');
+                    li.style.padding = 'var(--spacing-sm)';
+                    li.style.background = 'var(--bg-light)';
+                    li.style.borderRadius = 'var(--radius)';
+                    li.style.marginBottom = 'var(--spacing-xs)';
+                    li.style.display = 'flex';
+                    li.style.alignItems = 'center';
+                    li.style.gap = 'var(--spacing-sm)';
+                    
+                    const icon = document.createElement('i');
+                    if (file.type === 'application/pdf') {
+                        icon.className = 'fas fa-file-pdf';
+                        icon.style.color = '#dc2626';
+                    } else if (file.type.startsWith('image/')) {
+                        icon.className = 'fas fa-file-image';
+                        icon.style.color = '#10b981';
+                    } else {
+                        icon.className = 'fas fa-file';
+                        icon.style.color = '#6b7280';
+                    }
+                    
+                    const name = document.createElement('span');
+                    name.textContent = file.name;
+                    name.style.flex = '1';
+                    
+                    const size = document.createElement('span');
+                    size.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                    size.style.color = 'var(--text-secondary)';
+                    size.style.fontSize = '0.875rem';
+                    
+                    li.appendChild(icon);
+                    li.appendChild(name);
+                    li.appendChild(size);
+                    list.appendChild(li);
+                });
+                
+                fileList.appendChild(list);
+            }
+        });
     }
 </script>
 

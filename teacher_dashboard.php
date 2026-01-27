@@ -259,7 +259,7 @@ $stats = $conn->query("SELECT
                 <div class="card table-card" id="complaints">
                     <h3><i class="fas fa-list-alt"></i> All Student Complaints</h3>
                     <div class="table-responsive">
-                        <table>
+                        <table class="datatable datatable-desc">
                             <thead>
                                 <tr>
                                     <th>ID</th>
@@ -269,7 +269,7 @@ $stats = $conn->query("SELECT
                                     <th>Category</th>
                                     <th>Status</th>
                                     <th>Date</th>
-                                    <th>Actions</th>
+                                    <th data-orderable="false">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -306,9 +306,7 @@ $stats = $conn->query("SELECT
                                         <?php endif; ?>
                                     </td>
                                 </tr>
-                                <?php endforeach; else: ?>
-                                    <tr><td colspan="8" class="empty">No complaints found.</td></tr>
-                                <?php endif; ?>
+                                <?php endforeach; endif; ?>
                             </tbody>
                         </table>
                     </div>
@@ -390,5 +388,6 @@ function closeModal() {
 }
 </script>
 
+<?php require_once 'includes/datatables.inc.php'; ?>
 </body>
 </html>
