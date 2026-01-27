@@ -94,7 +94,7 @@ if (!$result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Users | Admin</title>
-    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .user-card {
@@ -393,7 +393,7 @@ if (!$result) {
                                 <?php endif; ?>
                                 
                                 <?php if ($user['role'] !== 'admin'): ?>
-                                <form method="post" action="delete_user.php" onsubmit="return confirm('WARNING: Are you sure you want to delete this user? This action cannot be undone.');" style="margin-top: var(--spacing-sm);">
+                                <form method="post" action="handlers/delete_user.php" onsubmit="return confirm('WARNING: Are you sure you want to delete this user? This action cannot be undone.');" style="margin-top: var(--spacing-sm);">
                                     <input type="hidden" name="user_id" value="<?php echo $user['user_id']; ?>">
                                     <button type="submit" class="btn-delete-user">
                                         <i class="fas fa-user-times"></i> Delete User

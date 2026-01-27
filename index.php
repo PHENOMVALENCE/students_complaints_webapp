@@ -14,7 +14,7 @@ $error = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : "";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complaint Management System - Login</title>
-    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body {
@@ -408,7 +408,7 @@ $error = isset($_GET['error']) ? htmlspecialchars($_GET['error']) : "";
                     <div class="error-msg"><i class="fas fa-circle-exclamation"></i> <?php echo $error; ?></div>
                 <?php endif; ?>
 
-                <form action="process_index.php" method="post">
+                <form action="handlers/process_index.php" method="post">
                     <div class="input-field">
                         <i class="fas fa-user"></i>
                         <input type="text" name="username" placeholder="Username" required>

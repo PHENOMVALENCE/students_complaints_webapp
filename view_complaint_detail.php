@@ -119,7 +119,7 @@ $show_student_name = ($role === 'admin' || $role === 'student' || !($complaint['
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complaint Details #<?php echo $complaint_id; ?> - CMS</title>
-    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .detail-container {
@@ -323,7 +323,7 @@ $show_student_name = ($role === 'admin' || $role === 'student' || !($complaint['
                             <div class="detail-value" style="margin-top: var(--spacing-sm);">
                                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--spacing-md);">
                                     <?php foreach ($attachments as $attach): ?>
-                                        <a href="download_attachment.php?id=<?php echo $attach['attachment_id']; ?>" target="_blank" style="display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-md); background: var(--bg-light); border-radius: var(--radius); text-decoration: none; color: var(--text-primary); transition: var(--transition); border: 1px solid var(--border); hover:border-color: var(--primary);" onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.borderColor='var(--border)'; this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                                        <a href="handlers/download_attachment.php?id=<?php echo $attach['attachment_id']; ?>" target="_blank" style="display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-md); background: var(--bg-light); border-radius: var(--radius); text-decoration: none; color: var(--text-primary); transition: var(--transition); border: 1px solid var(--border); hover:border-color: var(--primary);" onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.borderColor='var(--border)'; this.style.transform='translateY(0)'; this.style.boxShadow='none'">
                                             <i class="fas <?php echo $attach['file_type'] === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image'; ?>" style="color: <?php echo $attach['file_type'] === 'application/pdf' ? '#dc2626' : '#10b981'; ?>; font-size: 1.5rem; flex-shrink: 0;"></i>
                                             <div style="flex: 1; min-width: 0;">
                                                 <div style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px;" title="<?php echo htmlspecialchars($attach['file_name']); ?>"><?php echo htmlspecialchars($attach['file_name']); ?></div>
@@ -346,7 +346,7 @@ $show_student_name = ($role === 'admin' || $role === 'student' || !($complaint['
                 <?php if ($complaint['status'] === 'resolved' && $role === 'student' && !$feedback): ?>
                 <div class="detail-card">
                     <h3><i class="fas fa-star"></i> Provide Feedback</h3>
-                    <form action="submit_feedback.php" method="post">
+                    <form action="handlers/submit_feedback.php" method="post">
                         <input type="hidden" name="complaint_id" value="<?php echo $complaint_id; ?>">
                         <div class="form-group">
                             <label>Rating <span class="required">*</span></label>
@@ -420,7 +420,7 @@ $show_student_name = ($role === 'admin' || $role === 'student' || !($complaint['
                 
                 <div class="detail-card">
                     <h3><i class="fas fa-question-circle"></i> Request Information from Student</h3>
-                    <form action="request_information.php" method="post">
+                    <form action="handlers/request_information.php" method="post">
                         <input type="hidden" name="complaint_id" value="<?php echo $complaint_id; ?>">
                         <div class="form-group">
                             <label for="request_message">Request Message <span class="required">*</span></label>

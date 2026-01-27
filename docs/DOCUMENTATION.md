@@ -35,7 +35,7 @@ SCRMS allows students to submit, track, and provide feedback on complaints. Depa
 - **Database:** MySQL / MariaDB
 - **Frontend:** HTML, CSS, JavaScript
 - **Libraries:** jQuery, DataTables, Font Awesome
-- **Styling:** `theme.css` (CSS variables, dashboard layout)
+- **Styling:** `assets/css/theme.css` (CSS variables, dashboard layout)
 
 ### Key Capabilities
 
@@ -73,13 +73,13 @@ SCRMS allows students to submit, track, and provide feedback on complaints. Depa
 ### 3.2 Database Setup Order
 
 1. **Base schema**  
-   Use one of:
-   - `fix_database.sql` (recommended for clean install)
-   - `complete_database_schema.sql` (full rebuild)
-   - `create_missing_tables.sql` (add missing tables only)
+   Use one of (from `sql/`):
+   - `sql/fix_database.sql` (recommended for clean install)
+   - `sql/complete_database_schema.sql` (full rebuild)
+   - `sql/create_missing_tables.sql` (add missing tables only)
 
 2. **SCRMS extensions**  
-   Run `scrms_database_updates.sql` to add:
+   Run `sql/scrms_database_updates.sql` to add:
    - `complaint_attachments`, `complaint_feedback`, `collaboration_notes`, `information_requests`
    - `is_anonymous` on `complaints`
 
@@ -99,7 +99,9 @@ Uploads are stored under `uploads/complaints/{complaint_id}/`. The `uploads/.git
 
 ## 4. Configuration
 
-### Database (`connect.php`)
+### Database (`config/connect.php`)
+
+Edit `config/connect.php` for DB credentials and paths:
 
 ```php
 $servername = "localhost";
@@ -108,7 +110,10 @@ $password   = "";
 $dbname     = "complaintsystem";
 ```
 
-Adjust these for your environment. Use prepared statements throughout; the app does not use a separate ORM.
+- **APP_ROOT**: Project root path (auto).
+- **BASE_PATH**: Web base path; use `''` if app is at document root, or `'/complaint_system'` if in a subdir.
+
+Root pages use `require 'connect.php'`, which forwards to `config/connect.php`.
 
 ---
 
@@ -294,18 +299,18 @@ Tables no longer use a “no data” `<tr><td colspan="…">` row. DataTables sh
 | `track_complaints.php`  | Student: list and filter own complaints |
 | `view_complaint_detail.php` | Detail view; attachments, history, notes, requests, feedback |
 | `respond_complaints.php`| Admin/teacher respond UI |
-| `process_response.php`  | Resolve/deny handler |
-| `delete_complaints.php` | Delete complaint (admin) |
+| `handlers/process_response.php`  | Resolve/deny handler |
+| `handlers/delete_complaints.php` | Delete complaint (admin) |
 
-### SCRMS Handlers
+### SCRMS Handlers (`handlers/`)
 
 | File                     | Purpose |
 |--------------------------|--------|
-| `submit_feedback.php`    | Submit feedback/rating for resolved complaint |
-| `add_collaboration_note.php` | Add internal note |
-| `request_information.php`   | Staff request more info from student |
-| `respond_to_request.php`   | Student response to information request |
-| `download_attachment.php`  | Secure download of complaint attachment |
+| `handlers/submit_feedback.php`    | Submit feedback/rating for resolved complaint |
+| `handlers/add_collaboration_note.php` | Add internal note |
+| `handlers/request_information.php`   | Staff request more info from student |
+| `handlers/respond_to_request.php`   | Student response to information request |
+| `handlers/download_attachment.php`  | Secure download of complaint attachment |
 
 ### Admin
 
@@ -321,21 +326,22 @@ Tables no longer use a “no data” `<tr><td colspan="…">` row. DataTables sh
 
 ### Other
 
-| File              | Purpose |
-|-------------------|--------|
-| `connect.php`     | DB connection |
-| `profile.php`     | User profile |
-| `theme.css`       | Global styles |
-| `datatables-theme.css` | DataTables overrides |
+| File / path        | Purpose |
+|--------------------|--------|
+| `connect.php`      | Forwards to `config/connect.php` (root) |
+| `config/connect.php` | DB connection, APP_ROOT, BASE_PATH, base_url() |
+| `profile.php`      | User profile |
+| `assets/css/theme.css` | Global styles |
+| `assets/css/datatables-theme.css` | DataTables overrides |
 | `includes/datatables.inc.php` | DataTables setup and init |
 
-### SQL / Docs
+### SQL (`sql/`) and docs (`docs/`)
 
-- `fix_database.sql`, `complete_database_schema.sql`, `create_missing_tables.sql` — Base schema.
-- `scrms_database_updates.sql` — SCRMS migrations.
-- `DATABASE_SETUP_INSTRUCTIONS.md` — DB setup and admin user.
-- `IMPLEMENTATION_SUMMARY.md` — Implementation overview.
-- `SCRMS_IMPLEMENTATION_GUIDE.md` — SCRMS features and usage.
+- `sql/fix_database.sql`, `sql/complete_database_schema.sql`, `sql/create_missing_tables.sql` — Base schema.
+- `sql/scrms_database_updates.sql` — SCRMS migrations.
+- `docs/DATABASE_SETUP_INSTRUCTIONS.md` — DB setup and admin user.
+- `docs/IMPLEMENTATION_SUMMARY.md` — Implementation overview.
+- `docs/SCRMS_IMPLEMENTATION_GUIDE.md` — SCRMS features and usage.
 
 ---
 
@@ -346,7 +352,7 @@ Tables no longer use a “no data” `<tr><td colspan="…">` row. DataTables sh
 - **Prepared statements:** All dynamic SQL uses `mysqli` prepared statements.
 - **Passwords:** `password_hash()` / `password_verify()`.
 - **File uploads:** Allowed types (PDF, images); MIME checks; max size 5MB; unique names; stored under `uploads/complaints/{id}/`.
-- **Downloads:** `download_attachment.php` checks role and complaint access before serving files.
+- **Downloads:** `handlers/download_attachment.php` checks role and complaint access before serving files.
 - **Anonymity:** `is_anonymous` hides student identity from staff; admins always see identity.
 
 ---
@@ -355,17 +361,17 @@ Tables no longer use a “no data” `<tr><td colspan="…">` row. DataTables sh
 
 | Endpoint                 | Method | Purpose |
 |--------------------------|--------|--------|
-| `process_index.php`      | POST   | Login |
-| `process_register.php`   | POST   | Student registration |
-| `process_response.php`   | POST   | Resolve/deny complaint (admin/teacher) |
-| `process_approval.php`   | POST   | Approve/reject teacher |
-| `submit_feedback.php`    | POST   | Submit feedback for resolved complaint |
-| `add_collaboration_note.php` | POST | Add collaboration note |
-| `request_information.php`   | POST | Request more info from student |
-| `respond_to_request.php`   | POST | Student response to request |
-| `download_attachment.php`  | GET   | Download attachment (id in query) |
-| `delete_complaints.php`  | GET    | Delete complaint (id in query; confirm) |
-| `delete_user.php`       | POST   | Delete user |
+| `handlers/process_index.php`      | POST   | Login |
+| `handlers/process_register.php`   | POST   | Student registration |
+| `handlers/process_response.php`   | POST   | Resolve/deny complaint (admin/teacher) |
+| `handlers/process_approval.php`   | POST   | Approve/reject teacher |
+| `handlers/submit_feedback.php`    | POST   | Submit feedback for resolved complaint |
+| `handlers/add_collaboration_note.php` | POST | Add collaboration note |
+| `handlers/request_information.php`   | POST | Request more info from student |
+| `handlers/respond_to_request.php`   | POST | Student response to request |
+| `handlers/download_attachment.php`  | GET   | Download attachment (id in query) |
+| `handlers/delete_complaints.php`  | GET    | Delete complaint (id in query; confirm) |
+| `handlers/delete_user.php`       | POST   | Delete user |
 
 All POST handlers validate `$_SERVER['REQUEST_METHOD']` and relevant `$_POST` fields; redirect with `$_SESSION['message']` on success/error.
 

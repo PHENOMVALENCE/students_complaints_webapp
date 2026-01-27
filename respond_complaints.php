@@ -41,7 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Respond to Complaint #<?php echo $complaint['complaint_id']; ?> - Admin</title>
-            <link rel="stylesheet" href="theme.css">
+            <link rel="stylesheet" href="assets/css/theme.css">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
         </head>
         <body>
@@ -82,7 +82,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
                             </p>
                         </div>
                         
-                        <form action="process_response.php" method="post">
+                        <form action="handlers/process_response.php" method="post">
                             <input type="hidden" name="complaint_id" value="<?php echo $complaint['complaint_id']; ?>">
                             
                             <div class="form-group">
@@ -110,7 +110,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
                                 <label><i class="fas fa-paperclip"></i> Attachments (<?php echo count($attachments); ?>)</label>
                                 <div style="display: flex; flex-wrap: wrap; gap: var(--spacing-sm); margin-top: var(--spacing-xs);">
                                     <?php foreach ($attachments as $attach): ?>
-                                        <a href="download_attachment.php?id=<?php echo $attach['attachment_id']; ?>" target="_blank" style="display: inline-flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-sm) var(--spacing-md); background: var(--bg-light); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text-primary); font-size: 0.875rem;">
+                                        <a href="handlers/download_attachment.php?id=<?php echo $attach['attachment_id']; ?>" target="_blank" style="display: inline-flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-sm) var(--spacing-md); background: var(--bg-light); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: var(--text-primary); font-size: 0.875rem;">
                                             <i class="fas <?php echo $attach['file_type'] === 'application/pdf' ? 'fa-file-pdf' : 'fa-file-image'; ?>" style="color: <?php echo $attach['file_type'] === 'application/pdf' ? '#dc2626' : '#10b981'; ?>;"></i>
                                             <span><?php echo htmlspecialchars($attach['file_name']); ?></span>
                                             <i class="fas fa-external-link-alt" style="font-size: 0.75rem; opacity: 0.7;"></i>

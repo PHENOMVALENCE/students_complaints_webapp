@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join CMS | Student Complaint System</title>
-    <link rel="stylesheet" href="style_index.css"> <link rel="stylesheet" href="style_register.css"> 
+    <link rel="stylesheet" href="assets/css/style_index.css"> <link rel="stylesheet" href="assets/css/style_register.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -31,7 +31,7 @@
                     <h1>Get Started</h1>
                 </div>
 
-                <form action="process_register.php" method="post">
+                <form action="handlers/process_register.php" method="post">
                     <div class="input-group">
                         <label>Select Your Identity</label>
                         <div class="role-selector">

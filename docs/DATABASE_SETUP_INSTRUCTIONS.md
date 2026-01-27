@@ -11,12 +11,12 @@ Your database dump shows that:
 
 I've created three SQL files for you:
 
-### 1. `fix_database.sql` (RECOMMENDED - Use this one)
+### 1. `sql/fix_database.sql` (RECOMMENDED - Use this one)
 - **Drops and recreates** the missing tables
 - **Use this if:** You don't have important data in users/complaints tables, or the tables are corrupted
 - **Warning:** This will delete any existing data in users and complaints tables
 
-### 2. `create_missing_tables.sql`
+### 2. `sql/create_missing_tables.sql`
 - **Creates tables only if they don't exist**
 - **Use this if:** You want to preserve existing data (though the error suggests tables don't exist)
 - Has complex foreign key handling
@@ -32,7 +32,7 @@ I've created three SQL files for you:
 1. Open phpMyAdmin
 2. Select your `complaintsystem` database
 3. Go to SQL tab
-4. Run `fix_database.sql`
+4. Run `sql/fix_database.sql`
 5. Done! ✅
 
 ### Option B: If You Have Existing Data
@@ -42,7 +42,7 @@ I've created three SQL files for you:
    SELECT COUNT(*) FROM users;
    SELECT COUNT(*) FROM complaints;
    ```
-3. If tables are empty or corrupted, use `fix_database.sql`
+3. If tables are empty or corrupted, use `sql/fix_database.sql`
 4. If you need to preserve data, you'll need to:
    - Export existing data
    - Run the fix script
@@ -150,5 +150,5 @@ If you encounter issues:
 
 ---
 
-**Ready to proceed?** Use `fix_database.sql` - it's the simplest solution! 🚀
+**Ready to proceed?** Use `sql/fix_database.sql` - it's the simplest solution! 🚀
 

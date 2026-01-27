@@ -39,7 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['complaint'])) {
             $complaint_id = $conn->insert_id;
             
             // Handle file uploads
-            $upload_dir = "uploads/complaints/{$complaint_id}/";
+            $upload_dir = (defined('APP_ROOT') ? APP_ROOT . DIRECTORY_SEPARATOR : '') . 'uploads' . DIRECTORY_SEPARATOR . 'complaints' . DIRECTORY_SEPARATOR . $complaint_id . DIRECTORY_SEPARATOR;
             if (!file_exists($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
@@ -56,25 +56,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['complaint'])) {
                         $file_size = $_FILES['attachments']['size'][$i];
                         $file_type = $_FILES['attachments']['type'][$i];
                         
-                        // Validate file type
                         if (!in_array($file_type, $allowed_types)) {
-                            continue; // Skip invalid files
+                            continue;
                         }
-                        
-                        // Validate file size
                         if ($file_size > $max_size) {
-                            continue; // Skip oversized files
+                            continue;
                         }
                         
-                        // Generate unique filename
                         $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
                         $unique_name = uniqid() . '_' . time() . '.' . $file_ext;
-                        $file_path = $upload_dir . $unique_name;
+                        $file_path_full = $upload_dir . $unique_name;
+                        $file_path_db = 'uploads/complaints/' . $complaint_id . '/' . $unique_name;
                         
-                        if (move_uploaded_file($file_tmp, $file_path)) {
-                            // Store attachment in database
+                        if (move_uploaded_file($file_tmp, $file_path_full)) {
                             $attach_stmt = $conn->prepare("INSERT INTO complaint_attachments (complaint_id, file_name, file_path, file_type, file_size) VALUES (?, ?, ?, ?, ?)");
-                            $attach_stmt->bind_param("isssi", $complaint_id, $file_name, $file_path, $file_type, $file_size);
+                            $attach_stmt->bind_param("isssi", $complaint_id, $file_name, $file_path_db, $file_type, $file_size);
                             $attach_stmt->execute();
                             $attach_stmt->close();
                         }
@@ -112,7 +108,7 @@ if (isset($_SESSION['message'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submit Complaint - Student Portal</title>
-    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .form-container {

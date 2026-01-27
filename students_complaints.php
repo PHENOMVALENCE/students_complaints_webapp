@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
-    header("Location: login.html");
+    header("Location: index.php");
     exit;
 }
 
@@ -33,7 +33,7 @@ $result = $stmt->get_result();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Complaints | Admin</title>
-    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .action-cell {
@@ -182,7 +182,7 @@ $result = $stmt->get_result();
                                             <a href="respond_complaints.php?id=<?php echo $row['complaint_id']; ?>" class="action-link respond" title="Respond">
                                                 <i class="fas fa-reply"></i>
                                             </a>
-                                            <a href="delete_complaints.php?id=<?php echo $row['complaint_id']; ?>" 
+                                            <a href="handlers/delete_complaints.php?id=<?php echo $row['complaint_id']; ?>" 
                                                class="action-link delete" 
                                                onclick="return confirm('Delete this complaint record?')"
                                                title="Delete">

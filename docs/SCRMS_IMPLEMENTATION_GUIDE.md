@@ -9,8 +9,7 @@ This document outlines the implementation of the Student Complaint Resolution Ma
 Execute the SQL script to add new tables and columns:
 
 ```sql
--- Run this file in phpMyAdmin or MySQL command line
-scrms_database_updates.sql
+-- Run sql/scrms_database_updates.sql in phpMyAdmin or MySQL command line
 ```
 
 This script creates:

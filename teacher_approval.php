@@ -28,7 +28,7 @@ $approved_count = ($ac_result && $row = $ac_result->fetch_assoc()) ? (int)$row['
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Approvals | Admin</title>
-    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         .stats-banner {
@@ -255,13 +255,13 @@ $approved_count = ($ac_result && $row = $ac_result->fetch_assoc()) ? (int)$row['
                             </div>
                         </div>
                         <div class="approval-actions">
-                            <form action="process_approval.php" method="post" style="display: inline;">
+                            <form action="handlers/process_approval.php" method="post" style="display: inline;">
                                 <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
                                 <button type="submit" name="approve" class="btn-approve">
                                     <i class="fas fa-check"></i> Approve
                                 </button>
                             </form>
-                            <form action="process_approval.php" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to reject this teacher request? This action cannot be undone.');">
+                            <form action="handlers/process_approval.php" method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to reject this teacher request? This action cannot be undone.');">
                                 <input type="hidden" name="user_id" value="<?php echo $row['user_id']; ?>">
                                 <button type="submit" name="reject" class="btn-reject">
                                     <i class="fas fa-times"></i> Reject
