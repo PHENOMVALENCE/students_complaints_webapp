@@ -50,7 +50,7 @@
                     </div>
 
                     <div class="input-field">
-                        <label for="username">Choose a Username</label>
+                        <label for="username">Enter Your Full Name</label>
                         <div class="input-wrapper">
                             <i class="fas fa-at"></i>
                             <input type="text" id="username" name="username" placeholder="johndoe123" required>
@@ -58,7 +58,7 @@
                     </div>
                     
                     <div class="input-field">
-                        <label for="password">Security Password</label>
+                        <label for="password">Password</label>
                         <div class="input-wrapper">
                             <i class="fas fa-shield-alt"></i>
                             <input type="password" id="password" name="password" placeholder="••••••••" required>
